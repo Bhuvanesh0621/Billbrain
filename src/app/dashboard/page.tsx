@@ -304,25 +304,27 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-4">
                 {expenses.slice(0, 10).map((expense) => (
-                  <div key={expense.id} className="flex items-center justify-between p-3 border border-border/50 rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center space-x-4 overflow-hidden">
-                      <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 bg-primary/10 text-primary">
-                        <Receipt className="h-6 w-6" />
+                  <Link href={`/dashboard/search?q=${encodeURIComponent(expense.category)}`} key={expense.id} className="block">
+                    <div className="flex items-center justify-between p-3 border border-border/50 rounded-lg hover:bg-muted/50 transition-all hover:scale-[1.01] cursor-pointer">
+                      <div className="flex items-center space-x-4 overflow-hidden">
+                        <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                          <Receipt className="h-6 w-6" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">{expense.category}</p>
+                          <p className="text-xs text-muted-foreground truncate">{expense.description || expense.paymentMethod || 'No description'}</p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">{expense.category}</p>
-                        <p className="text-xs text-muted-foreground truncate">{expense.description || expense.paymentMethod || 'No description'}</p>
+                      <div className="flex flex-col items-end shrink-0 ml-4">
+                        <div className="font-bold text-base">
+                          ₹{expense.amount.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(expense.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end shrink-0 ml-4">
-                      <div className="font-bold text-base">
-                        ₹{expense.amount.toLocaleString()}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(expense.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      </div>
-                    </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}

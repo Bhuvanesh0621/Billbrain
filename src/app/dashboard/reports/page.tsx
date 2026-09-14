@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { IndianRupee, ArrowDownCircle, ArrowUpCircle, Wallet, Loader2, Calendar as CalendarIcon } from "lucide-react"
+import { IndianRupee, ArrowDownCircle, ArrowUpCircle, Wallet, Loader2, Calendar as CalendarIcon, FileText } from "lucide-react"
 
 export default function ReportsPage() {
   // Default to last 7 days
@@ -123,9 +123,27 @@ export default function ReportsPage() {
 
           {/* Transactions Table */}
           <Card className="shadow-sm border-muted">
-            <CardHeader className="border-b bg-muted/20">
-              <CardTitle>Transaction Log</CardTitle>
-              <CardDescription>All recorded financial activity between {new Date(startDate).toLocaleDateString()} and {new Date(endDate).toLocaleDateString()}.</CardDescription>
+            <CardHeader className="border-b bg-muted/20 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Transaction Log</CardTitle>
+                <CardDescription>All recorded financial activity between {new Date(startDate).toLocaleDateString()} and {new Date(endDate).toLocaleDateString()}.</CardDescription>
+              </div>
+              <button 
+                onClick={() => {
+                  const csvContent = "data:text/csv;charset=utf-8," 
+                    + "Date,Type,Category,Description,Amount\n" 
+                    + reportData.transactions.map(t => `${new Date(t.date).toLocaleDateString('en-GB')},${t.type},${t.category},${t.description || ''},${t.amount}`).join("\n")
+                  const encodedUri = encodeURI(csvContent)
+                  const link = document.createElement("a")
+                  link.setAttribute("href", encodedUri)
+                  link.setAttribute("download", `billbrain_report_${startDate}_to_${endDate}.csv`)
+                  document.body.appendChild(link)
+                  link.click()
+                }}
+                className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-colors"
+              >
+                <FileText className="mr-2 h-4 w-4" /> Download CSV
+              </button>
             </CardHeader>
             <CardContent className="p-0">
               {reportData.transactions.length === 0 ? (
