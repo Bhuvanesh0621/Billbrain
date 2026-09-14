@@ -25,7 +25,7 @@ export default function SmartSearchPage() {
   const fetchResults = async (searchQuery: string) => {
     setIsLoading(true)
     try {
-      const res = await fetch(`/api/search?q=\${encodeURIComponent(searchQuery)}`)
+      const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`)
       if (res.ok) {
         const data = await res.json()
         setResults(data.results)
@@ -97,7 +97,7 @@ export default function SmartSearchPage() {
             </div>
             <div className="divide-y">
               {results.map((item, index) => (
-                <div key={\`\${item.type}-\${item.id}-\${index}\`} className="flex items-center p-6 hover:bg-muted/30 transition-colors">
+                <div key={`${item.type}-${item.id}-${index}`} className="flex items-center p-6 hover:bg-muted/30 transition-colors">
                   <div className="h-12 w-12 rounded-full bg-background border flex items-center justify-center shadow-sm mr-4 flex-shrink-0">
                     {getIcon(item.icon)}
                   </div>
