@@ -2,45 +2,6 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { prisma } from "@/lib/prisma"
 import { authOptions } from "@/lib/auth"
-import { GoogleGenerativeAI, FunctionDeclaration, Tool, SchemaType } from "@google/generative-ai"
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "dummy")
-
-const queryDatabaseDeclaration: FunctionDeclaration = {
-  name: "query_database",
-  description: "Queries the user's financial database (Expenses, Incomes, Budgets). Use this to fetch required data to answer the user's question.",
-  parameters: {
-    type: SchemaType.OBJECT,
-    properties: {
-      tables: {
-        type: SchemaType.ARRAY,
-        items: { type: SchemaType.STRING, enum: ["Expense", "Income", "Budget"] },
-        description: "The database tables to query. You can query multiple tables at once."
-      },
-      startDate: {
-        type: SchemaType.STRING,
-        description: "Optional. Filter records from this date onwards (ISO format YYYY-MM-DD)."
-      },
-      endDate: {
-        type: SchemaType.STRING,
-        description: "Optional. Filter records up to this date (ISO format YYYY-MM-DD)."
-      },
-      category: {
-        type: SchemaType.STRING,
-        description: "Optional. Filter by a specific category (e.g., Food, Transport)."
-      },
-      paymentMethod: {
-        type: SchemaType.STRING,
-        description: "Optional. Filter by a specific payment method (e.g., UPI, Cash)."
-      }
-    },
-    required: ["tables"]
-  }
-}
-
-const dbTool: Tool = {
-  functionDeclarations: [queryDatabaseDeclaration]
-}
 
 export async function POST(req: Request) {
   try {
@@ -60,89 +21,116 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Messages array is required" }, { status: 400 })
     }
 
-    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.includes("dummy")) {
-      return NextResponse.json({ 
-        reply: "Hello! I am the Universal BillBrain AI Assistant. To query your live database, please ensure a valid GEMINI_API_KEY is configured in your environment variables!" 
+    const lastMessage = messages[messages.length - 1].content.toLowerCase()
+    
+    // =========================================================================
+    // 🧠 BILLBRAIN NLP DEMO ENGINE (No API Key Required)
+    // =========================================================================
+    
+    const today = new Date()
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+    let responseText = "I'm currently in **Demo Mode**! I didn't quite catch that, but try asking me about your spending this month, your biggest expense, or your spending on food!"
+
+    // Query 1: Total spending this month (English + Tamil)
+    if (lastMessage.includes("total") && (lastMessage.includes("month") || lastMessage.includes("spend panniruken"))) {
+      const expenses = await prisma.expense.findMany({ 
+        where: { userId: user.id, date: { gte: startOfMonth } } 
       })
-    }
-
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
-      tools: [dbTool],
-      systemInstruction: `You are the Universal BillBrain AI Assistant. You have direct access to the user's financial database via the 'query_database' tool. 
-- You MUST use the 'query_database' tool to fetch data before answering any question about their spending, income, or budgets.
-- Answer accurately based ONLY on the data returned by the tool. If the data is empty, explicitly state that no records were found.
-- You must support queries in English, Tamil, and Tanglish. Reply in the same language the user uses.
-- Format responses beautifully in markdown with bullet points and bold text where appropriate.`
-    })
-
-    const formattedHistory = messages.slice(0, -1).map((msg: any) => ({
-      role: msg.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: msg.content }]
-    }))
-
-    const chat = model.startChat({ history: formattedHistory })
-    const lastMessage = messages[messages.length - 1].content
-
-    // 1. Send the user's message to the model
-    let result;
-    try {
-      result = await chat.sendMessage(lastMessage)
-    } catch (e: any) {
-      console.error("Gemini API Error:", e)
-      return NextResponse.json({ reply: "I encountered an error connecting to my AI brain. Please check your API key." })
-    }
-    
-    let responseText = ""
-    
-    // 2. Check if the model wants to call a function
-    const functionCalls = result.response.functionCalls()
-    
-    if (functionCalls && functionCalls.length > 0) {
-      const call = functionCalls[0]
-      if (call.name === "query_database") {
-        const { tables, startDate, endDate, category, paymentMethod } = call.args as any
-        
-        let fetchedData: any = {}
-        
-        // Build Prisma where clause
-        const whereClause: any = { userId: user.id }
-        if (startDate || endDate) {
-          whereClause.date = {}
-          if (startDate) whereClause.date.gte = new Date(startDate)
-          if (endDate) whereClause.date.lte = new Date(endDate)
-        }
-        if (category) whereClause.category = { contains: category, mode: 'insensitive' }
-        if (paymentMethod) whereClause.paymentMethod = { contains: paymentMethod, mode: 'insensitive' }
-
-        // Execute queries dynamically based on requested tables
-        if (tables.includes("Expense")) {
-          fetchedData.expenses = await prisma.expense.findMany({ where: whereClause, orderBy: { date: 'desc' } })
-        }
-        if (tables.includes("Income")) {
-          const incomeWhere = { ...whereClause }
-          delete incomeWhere.category // Incomes use 'source' instead of 'category'
-          fetchedData.incomes = await prisma.income.findMany({ where: incomeWhere, orderBy: { date: 'desc' } })
-        }
-        if (tables.includes("Budget")) {
-          fetchedData.budgets = await prisma.budget.findMany({ where: { userId: user.id } })
-        }
-
-        // 3. Send the database results back to the model so it can formulate an answer
-        const functionResponse = await chat.sendMessage([{
-          functionResponse: {
-            name: "query_database",
-            response: fetchedData
-          }
-        }])
-        
-        responseText = functionResponse.response.text()
+      const total = expenses.reduce((acc, curr) => acc + curr.amount, 0)
+      
+      if (lastMessage.includes("panniruken")) {
+        responseText = `Neenga intha month total-ah **₹${total.toLocaleString('en-IN')}** spend pannirukinga across ${expenses.length} transactions.`
+      } else {
+        responseText = `You have spent a total of **₹${total.toLocaleString('en-IN')}** so far this month across ${expenses.length} transactions.`
       }
-    } else {
-      // Model answered without needing to query DB
-      responseText = result.response.text()
+    }
+    
+    // Query 2: Biggest expense ever
+    else if (lastMessage.includes("biggest expense") || lastMessage.includes("highest") || lastMessage.includes("maximum")) {
+      const biggestExpense = await prisma.expense.findFirst({
+        where: { userId: user.id },
+        orderBy: { amount: 'desc' }
+      })
+      if (biggestExpense) {
+        responseText = `Your biggest expense on record is **₹${biggestExpense.amount.toLocaleString('en-IN')}** for **${biggestExpense.category}** on ${new Date(biggestExpense.date).toLocaleDateString('en-US')}.\n\n*(Description: ${biggestExpense.description || 'N/A'})*`
+      } else {
+        responseText = "You don't have any expenses recorded yet!"
+      }
     }
 
+    // Query 3: Specific category and payment method (e.g. "food using UPI")
+    else if (lastMessage.includes("food") || lastMessage.includes("petrol") || lastMessage.includes("shopping")) {
+      const isUpi = lastMessage.includes("upi")
+      const isCash = lastMessage.includes("cash")
+      
+      let category = "Food"
+      if (lastMessage.includes("petrol")) category = "Petrol"
+      if (lastMessage.includes("shopping")) category = "Shopping"
+
+      const whereClause: any = { 
+        userId: user.id, 
+        category: { contains: category, mode: 'insensitive' } 
+      }
+      
+      if (isUpi) whereClause.paymentMethod = { contains: "UPI", mode: 'insensitive' }
+      if (isCash) whereClause.paymentMethod = { contains: "Cash", mode: 'insensitive' }
+
+      const expenses = await prisma.expense.findMany({ where: whereClause })
+      const total = expenses.reduce((acc, curr) => acc + curr.amount, 0)
+      
+      const paymentStr = isUpi ? "using UPI" : isCash ? "using Cash" : "in total"
+      
+      if (expenses.length > 0) {
+        responseText = `You have spent **₹${total.toLocaleString('en-IN')}** on **${category}** ${paymentStr}.\n\n`
+        responseText += `### Recent Transactions:\n`
+        expenses.slice(0, 3).forEach(e => {
+          responseText += `- ₹${e.amount} on ${new Date(e.date).toLocaleDateString()} (${e.description || 'No description'})\n`
+        })
+      } else {
+        responseText = `I couldn't find any expenses for ${category} ${paymentStr}.`
+      }
+    }
+
+    // Query 4: Find expenses above ₹X
+    else if (lastMessage.includes("above") || lastMessage.includes("greater than") || lastMessage.includes(">")) {
+      const amountMatch = lastMessage.match(/\d+(?:,\d+)?/);
+      if (amountMatch) {
+        const amountStr = amountMatch[0].replace(/,/g, '');
+        const amount = parseFloat(amountStr);
+        
+        const expenses = await prisma.expense.findMany({
+          where: { userId: user.id, amount: { gt: amount } },
+          orderBy: { amount: 'desc' }
+        })
+
+        if (expenses.length > 0) {
+          responseText = `I found **${expenses.length} expenses** above ₹${amount.toLocaleString('en-IN')}:\n\n`
+          expenses.slice(0, 5).forEach(e => {
+            responseText += `- **₹${e.amount.toLocaleString('en-IN')}** - ${e.category} (${new Date(e.date).toLocaleDateString()})\n`
+          })
+        } else {
+          responseText = `You have no expenses recorded above ₹${amount.toLocaleString('en-IN')}. Good job keeping costs down!`
+        }
+      }
+    }
+
+    // Query 5: Summary of financial activity
+    else if (lastMessage.includes("summary") || lastMessage.includes("overview")) {
+      const expenses = await prisma.expense.findMany({ where: { userId: user.id } })
+      const incomes = await prisma.income.findMany({ where: { userId: user.id } })
+      
+      const totalExpense = expenses.reduce((acc, curr) => acc + curr.amount, 0)
+      const totalIncome = incomes.reduce((acc, curr) => acc + curr.amount, 0)
+      const balance = totalIncome - totalExpense
+
+      responseText = `### 📊 Lifetime Financial Summary\n\n` +
+                     `- **Total Income:** ₹${totalIncome.toLocaleString('en-IN')}\n` +
+                     `- **Total Expenses:** ₹${totalExpense.toLocaleString('en-IN')}\n` +
+                     `- **Net Balance:** ₹${balance.toLocaleString('en-IN')}\n\n` +
+                     `You have tracked a total of ${expenses.length} expenses and ${incomes.length} income records.`
+    }
+
+    // Return the dynamically generated response
     return NextResponse.json({ reply: responseText })
     
   } catch (error) {
