@@ -1,0 +1,191 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  password      String?
+  currency      String    @default("INR")
+  country       String    @default("India")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  bills         Bill[]
+  subscriptions Subscription[]
+  insights      AiInsight[]
+  notifications Notification[]
+  households    HouseholdMember[]
+  ownedHouseholds Household[]
+  expenses      Expense[]
+  budgets       Budget[]
+  incomes       Income[]
+}
+
+model Income {
+  id          String   @id @default(cuid())
+  userId      String
+  amount      Float
+  source      String
+  date        DateTime
+  isRecurring Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Expense {
+  id            String    @id @default(cuid())
+  userId        String
+  amount        Float
+  category      String
+  description   String?
+  date          DateTime
+  paymentMethod String?
+  isRecurring   Boolean   @default(false)
+  recurrenceRule String?
+  receiptUrl    String?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Budget {
+  id        String   @id @default(cuid())
+  userId    String
+  category  String
+  amount    Float
+  period    String   @default("monthly")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, category, period])
+}
+
+model Bill {
+  id                 String    @id @default(cuid())
+  userId             String
+  provider           String
+  category           String
+  amount             Float
+  currency           String    @default("INR")
+  issueDate          DateTime?
+  dueDate            DateTime?
+  billingPeriodStart DateTime?
+  billingPeriodEnd   DateTime?
+  status             String    @default("pending") // pending, paid, overdue
+  uploadSource       String?
+  aiStatus           String    @default("pending") // pending, analyzed, failed
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  user               User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items              BillItem[]
+  payments           Payment[]
+}
+
+model BillItem {
+  id          String   @id @default(cuid())
+  billId      String
+  description String
+  quantity    Float?
+  unitPrice   Float?
+  amount      Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bill        Bill     @relation(fields: [billId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  billId      String
+  amount      Float
+  paymentDate DateTime
+  method      String?
+  status      String   @default("completed")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bill        Bill     @relation(fields: [billId], references: [id], onDelete: Cascade)
+}
+
+model Subscription {
+  id            String    @id @default(cuid())
+  userId        String
+  provider      String
+  amount        Float
+  frequency     String    @default("monthly")
+  nextDueDate   DateTime?
+  status        String    @default("active")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AiInsight {
+  id          String   @id @default(cuid())
+  userId      String
+  billId      String?
+  type        String   // anomaly, saving, prediction
+  severity    String   // low, medium, high
+  confidence  Float    // 0.0 to 1.0
+  message     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // due_date, anomaly, prediction, subscription, savings
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Household {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner     User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members   HouseholdMember[]
+}
+
+model HouseholdMember {
+  id          String   @id @default(cuid())
+  householdId String
+  userId      String
+  role        String   @default("member") // owner, member, viewer
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, userId])
+}
