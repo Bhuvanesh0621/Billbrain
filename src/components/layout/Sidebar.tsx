@@ -24,7 +24,6 @@ const mainNav = [
 ]
 
 const bottomNav = [
-  { title: "Notifications", href: "/dashboard/notifications", icon: Bell },
   { title: "Reports", href: "/dashboard/reports", icon: FileText },
   { title: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
