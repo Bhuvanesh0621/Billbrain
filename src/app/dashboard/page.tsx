@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
-import { Sparkles, Calendar as CalendarIcon, Target, TrendingUp, IndianRupee, Wallet, CheckCircle2, ArrowUpRight, ArrowDownRight, Plus, Loader2, Receipt } from "lucide-react"
+import { Sparkles, Calendar as CalendarIcon, Target, TrendingUp, IndianRupee, Wallet, CheckCircle2, ArrowUpRight, ArrowDownRight, Plus, Loader2, Receipt, ArrowDownToLine, ArrowUpFromLine } from "lucide-react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal"
@@ -97,6 +97,27 @@ export default function DashboardPage() {
     name: `${i + 1}`,
     amount: dailyData[i + 1] || 0
   }))
+
+  const recentActivity = [
+    ...expenses.map(e => ({ 
+      id: `exp-${e.id}`, 
+      amount: e.amount, 
+      date: e.date, 
+      category: e.category, 
+      title: e.category, 
+      subtitle: e.description || e.paymentMethod || 'No description', 
+      isIncome: false 
+    })),
+    ...incomes.map(i => ({ 
+      id: `inc-${i.id}`, 
+      amount: i.amount, 
+      date: i.date, 
+      category: 'Income', 
+      title: 'Income', 
+      subtitle: i.source || 'Manual Entry', 
+      isIncome: true 
+    }))
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
   const exportToPDF = () => {
     const doc = new jsPDF();
@@ -282,7 +303,7 @@ export default function DashboardPage() {
               <div className="space-y-4 mt-2">
                 {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
               </div>
-            ) : expenses.length === 0 ? (
+            ) : recentActivity.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center py-10 opacity-70">
                 <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
                   <Receipt className="h-6 w-6 text-muted-foreground" />
@@ -299,24 +320,24 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {expenses.slice(0, 10).map((expense) => (
-                  <Link href={`/dashboard/search?q=${encodeURIComponent(expense.category)}`} key={expense.id} className="block">
+                {recentActivity.slice(0, 10).map((item) => (
+                  <Link href={`/dashboard/search?q=${encodeURIComponent(item.category)}`} key={item.id} className="block">
                     <div className="flex items-center justify-between p-3 border border-border/50 rounded-lg hover:bg-muted/50 transition-all hover:scale-[1.01] cursor-pointer">
                       <div className="flex items-center space-x-4 overflow-hidden">
-                        <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                          <Receipt className="h-6 w-6" />
+                        <div className={`h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-colors ${item.isIncome ? 'bg-emerald-100 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white' : 'bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground'}`}>
+                          {item.isIncome ? <ArrowDownToLine className="h-6 w-6" /> : <Receipt className="h-6 w-6" />}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-foreground truncate">{expense.category}</p>
-                          <p className="text-xs text-muted-foreground truncate">{expense.description || expense.paymentMethod || 'No description'}</p>
+                          <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
+                          <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>
                         </div>
                       </div>
                       <div className="flex flex-col items-end shrink-0 ml-4">
-                        <div className="font-bold text-base">
-                          ₹{expense.amount.toLocaleString()}
+                        <div className={`font-bold text-base ${item.isIncome ? 'text-emerald-600' : 'text-foreground'}`}>
+                          {item.isIncome ? '+' : '-'}₹{item.amount.toLocaleString()}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {new Date(expense.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </div>
                       </div>
                     </div>
