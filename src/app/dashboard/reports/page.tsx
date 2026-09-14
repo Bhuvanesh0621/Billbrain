@@ -27,7 +27,7 @@ export default function ReportsPage() {
     if (!startDate || !endDate) return
     setIsLoading(true)
     try {
-      const res = await fetch(`/api/reports?start=\${startDate}&end=\${endDate}`)
+      const res = await fetch(`/api/reports?start=${startDate}&end=${endDate}`)
       if (res.ok) {
         const data = await res.json()
         setReportData(data)
@@ -114,7 +114,7 @@ export default function ReportsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className={\`text-3xl font-bold \${reportData.summary.netBalance >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}\`}>
+                <div className={`text-3xl font-bold ${reportData.summary.netBalance >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
                   ₹{reportData.summary.netBalance.toLocaleString('en-IN')}
                 </div>
               </CardContent>
@@ -150,11 +150,11 @@ export default function ReportsPage() {
                             {new Date(t.date).toLocaleDateString('en-GB')}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={\`px-2.5 py-1 rounded-full text-xs font-medium \${
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
                               t.type === 'Income' 
                                 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' 
                                 : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                            }\`}>
+                            }`}>
                               {t.type}
                             </span>
                           </td>
@@ -162,9 +162,9 @@ export default function ReportsPage() {
                             <span className="font-semibold text-foreground">{t.category}</span>
                             {t.description && <span> — {t.description}</span>}
                           </td>
-                          <td className={\`px-6 py-4 whitespace-nowrap text-right font-bold \${
+                          <td className={`px-6 py-4 whitespace-nowrap text-right font-bold ${
                             t.type === 'Income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'
-                          }\`}>
+                          }`}>
                             {t.type === 'Income' ? '+' : '-'}₹{t.amount.toLocaleString('en-IN')}
                           </td>
                         </tr>
