@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Search, Loader2, IndianRupee, FileText, Receipt, RefreshCw } from "lucide-react"
+import { Search, Loader2, IndianRupee, FileText, Receipt, RefreshCw, ArrowDownToLine } from "lucide-react"
 import { useLanguage } from "@/components/providers/LanguageProvider"
 
 export default function SmartSearchPage() {
@@ -43,8 +43,7 @@ export default function SmartSearchPage() {
   const getIcon = (iconName: string) => {
     switch (iconName) {
       case 'receipt': return <Receipt className="h-5 w-5 text-blue-500" />
-      case 'file-text': return <FileText className="h-5 w-5 text-orange-500" />
-      case 'refresh-cw': return <RefreshCw className="h-5 w-5 text-green-500" />
+      case 'arrow-down-to-line': return <ArrowDownToLine className="h-5 w-5 text-emerald-500" />
       default: return <FileText className="h-5 w-5 text-gray-500" />
     }
   }
@@ -106,7 +105,7 @@ export default function SmartSearchPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-lg font-semibold truncate text-foreground">{item.title}</p>
                     <div className="flex items-center mt-1 space-x-2 text-sm text-muted-foreground">
-                      <span className="font-medium px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-xs">
+                      <span className={`font-medium px-2 py-0.5 rounded-full text-xs ${item.isIncome ? 'bg-emerald-100 text-emerald-800' : 'bg-secondary text-secondary-foreground'}`}>
                         {item.type}
                       </span>
                       <span>•</span>
@@ -116,8 +115,8 @@ export default function SmartSearchPage() {
                     </div>
                   </div>
                   <div className="text-right ml-4">
-                    <p className="text-lg font-bold text-foreground">
-                      ₹{item.amount.toLocaleString('en-IN')}
+                    <p className={`text-lg font-bold ${item.isIncome ? 'text-emerald-600' : 'text-foreground'}`}>
+                      {item.isIncome ? '+' : '-'}₹{item.amount.toLocaleString('en-IN')}
                     </p>
                     <p className="text-sm text-muted-foreground capitalize">
                       {item.method || 'Unknown'}

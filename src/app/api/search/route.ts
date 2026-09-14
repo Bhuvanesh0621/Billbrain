@@ -36,61 +36,46 @@ export async function GET(req: Request) {
       orderBy: { date: 'desc' }
     })
 
-    // Search Bills
-    const bills = await prisma.bill.findMany({
+    // Search Incomes
+    const incomes = await prisma.income.findMany({
       where: {
         userId: user.id,
         OR: [
-          { provider: { contains: q } },
-          { category: { contains: q } }
+          { source: { contains: q } }
         ]
       },
-      orderBy: { dueDate: 'asc' }
-    })
-
-    // Search Subscriptions
-    const subscriptions = await prisma.subscription.findMany({
-      where: {
-        userId: user.id,
-        provider: { contains: q }
-      }
+      orderBy: { date: 'desc' }
     })
 
     // Format all results into a unified array
     const results = [
       ...expenses.map(e => ({
-        id: e.id,
+        id: `exp-${e.id}`,
         type: 'Expense',
         title: e.description || e.category,
         category: e.category,
         amount: e.amount,
         date: e.date,
         method: e.paymentMethod,
-        icon: 'receipt'
+        icon: 'receipt',
+        isIncome: false
       })),
-      ...bills.map(b => ({
-        id: b.id,
-        type: 'Bill',
-        title: b.provider,
-        category: b.category,
-        amount: b.amount,
-        date: b.dueDate || b.createdAt,
-        method: b.status,
-        icon: 'file-text'
-      })),
-      ...subscriptions.map(s => ({
-        id: s.id,
-        type: 'Subscription',
-        title: s.provider,
-        category: 'Subscription',
-        amount: s.amount,
-        date: s.nextDueDate || s.createdAt,
-        method: s.frequency,
-        icon: 'refresh-cw'
+      ...incomes.map(i => ({
+        id: `inc-${i.id}`,
+        type: 'Income',
+        title: i.source || 'Manual Entry',
+        category: 'Income',
+        amount: i.amount,
+        date: i.date,
+        method: '-',
+        icon: 'arrow-down-to-line',
+        isIncome: true
       }))
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
-    // Calculate total amount across all matched items
+    // Calculate total amount (Incomes as positive, Expenses as negative... wait, if it's total searched amount maybe they want sum of matching. Let's just sum it all as positive, or keep Incomes positive and Expenses negative for net balance).
+    // The previous implementation summed everything up. The user might be searching "Petrol" to see "How much I spent".
+    // I will sum them absolute.
     const totalAmount = results.reduce((sum, item) => sum + item.amount, 0)
 
     return NextResponse.json({ results, totalAmount })
