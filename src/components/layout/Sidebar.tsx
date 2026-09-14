@@ -20,7 +20,7 @@ const mainNav = [
   { title: "Dashboard", href: "/dashboard", icon: Home },
   { title: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { title: "Predictions", href: "/dashboard/predictions", icon: Lightbulb },
-  { title: "BillBrain AI", href: "/dashboard/ai", icon: Brain },
+  { title: "Smart Search", href: "/dashboard/search", icon: Brain }, // Repurposed AI icon
 ]
 
 const bottomNav = [

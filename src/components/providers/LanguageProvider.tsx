@@ -37,6 +37,7 @@ const translations: Record<Language, Record<string, string>> = {
     "no_transactions": "No transactions found.",
     "expense_timeline": "Expense Timeline",
     "daily_spending": "Daily Spending",
+    "smart_search": "Smart Search",
   },
   ta: {
     "dashboard": "டேஷ்போர்டு (Dashboard)",
@@ -64,6 +65,7 @@ const translations: Record<Language, Record<string, string>> = {
     "no_transactions": "பரிவர்த்தனைகள் ஏதுமில்லை.",
     "expense_timeline": "செலவு காலவரிசை",
     "daily_spending": "தினசரி செலவுகள்",
+    "smart_search": "ஸ்மார்ட் தேடல் (Smart Search)",
   }
 }
 
