@@ -23,7 +23,6 @@ export async function POST(req: Request) {
 
     const userMessage = messages[messages.length - 1].content
 
-    // 1. API Key Validation
     const apiKey = process.env.GEMINI_API_KEY
     if (!apiKey) {
       return NextResponse.json({ 
@@ -31,7 +30,6 @@ export async function POST(req: Request) {
       })
     }
 
-    // 2. Fetch all user data to feed as Context (RAG)
     const [expenses, incomes, budgets, bills, subscriptions, payments] = await Promise.all([
       prisma.expense.findMany({ where: { userId: user.id }, orderBy: { date: 'desc' } }),
       prisma.income.findMany({ where: { userId: user.id }, orderBy: { date: 'desc' } }),
@@ -45,7 +43,6 @@ export async function POST(req: Request) {
       })
     ])
 
-    // Compress data into CSV format for Token efficiency
     const expenseData = expenses.map(e => `${new Date(e.date).toISOString().split('T')[0]},${e.amount},${e.category},${e.paymentMethod || 'Unknown'},${e.description || 'none'}`).join('\n')
     const incomeData = incomes.map(i => `${new Date(i.date).toISOString().split('T')[0]},${i.amount},${i.source}`).join('\n')
     const budgetData = budgets.map(b => `${b.category},${b.amount},${b.period}`).join('\n')
@@ -86,18 +83,12 @@ ${payData || 'No payments recorded yet.'}
 USER QUESTION: "${userMessage}"
 `
 
-    // 3. Generate Answer using Native Fetch to support AQ.-prefixed Bearer tokens
-    const isOAuth = apiKey.startsWith("AQ.")
+    // Generate Answer using Native Fetch to support AQ.-prefixed Keys (NOT treated as OAuth)
+    const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+    
     const headers: Record<string, string> = {
-      "Content-Type": "application/json"
-    }
-
-    let url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
-
-    if (isOAuth) {
-      headers["Authorization"] = `Bearer ${apiKey}`
-    } else {
-      url += `?key=${apiKey}`
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey
     }
 
     const payload = {

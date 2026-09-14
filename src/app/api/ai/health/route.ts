@@ -7,17 +7,12 @@ export async function GET() {
       return NextResponse.json({ status: "error", message: "GEMINI_API_KEY is not set in environment variables." }, { status: 500 })
     }
 
-    const isOAuth = apiKey.startsWith("AQ.")
+    const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+    
+    // Pass strictly as x-goog-api-key, never as OAuth Bearer token
     const headers: Record<string, string> = {
-      "Content-Type": "application/json"
-    }
-
-    let url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
-
-    if (isOAuth) {
-      headers["Authorization"] = `Bearer ${apiKey}`
-    } else {
-      url += `?key=${apiKey}`
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey
     }
 
     const payload = {
