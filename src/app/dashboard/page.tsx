@@ -382,7 +382,8 @@ export default function DashboardPage() {
                     <Tooltip 
                       cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
                       contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                      formatter={(value: number) => [`₹${value}`, 'Spent']}
+                      formatter={(value: any) => [`₹${value}`, 'Spent']}
+                      labelFormatter={(label) => `Day ${label}`}
                     />
                     <Bar dataKey="amount" radius={[2, 2, 0, 0]}>
                       {chartData.map((entry, index) => (
