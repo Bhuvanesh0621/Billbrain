@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { prisma } from "@/lib/prisma"
 import { authOptions } from "@/lib/auth"
-import { GoogleGenerativeAI } from "@google/generative-ai"
 
 export async function POST(req: Request) {
   try {
@@ -87,27 +86,43 @@ ${payData || 'No payments recorded yet.'}
 USER QUESTION: "${userMessage}"
 `
 
-    // 3. Generate Answer using Gemini
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+    // 3. Generate Answer using Native Fetch to support AQ.-prefixed Bearer tokens
+    const isOAuth = apiKey.startsWith("AQ.")
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json"
+    }
 
-    // Use a timeout for the API call (Optional but good practice)
-    const result = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: systemPrompt }] }],
-        generationConfig: { temperature: 0.2 } // Lower temperature for more analytical/factual answers
+    let url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+
+    if (isOAuth) {
+      headers["Authorization"] = `Bearer ${apiKey}`
+    } else {
+      url += `?key=${apiKey}`
+    }
+
+    const payload = {
+      contents: [{ role: "user", parts: [{ text: systemPrompt }] }],
+      generationConfig: { temperature: 0.2 }
+    }
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload)
     })
-    
-    const reply = result.response.text()
+
+    const data = await response.json()
+
+    if (!response.ok) {
+        throw new Error(JSON.stringify(data))
+    }
+
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "I processed your request but could not generate a response."
 
     return NextResponse.json({ reply })
     
   } catch (error: any) {
     console.error("AI Chat error:", error)
-    
-    if (error.message?.includes("API key not valid")) {
-      return NextResponse.json({ reply: "⚠️ **Invalid API Key!** Your GEMINI_API_KEY is not recognized by Google. Please check your `.env` file." })
-    }
-
-    return NextResponse.json({ error: "Failed to generate AI response" }, { status: 500 })
+    return NextResponse.json({ error: "Failed to generate AI response", details: error.message }, { status: 500 })
   }
 }

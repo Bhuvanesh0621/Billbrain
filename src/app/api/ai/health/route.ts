@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-import { GoogleGenerativeAI } from "@google/generative-ai"
 
 export async function GET() {
   try {
@@ -8,12 +7,37 @@ export async function GET() {
       return NextResponse.json({ status: "error", message: "GEMINI_API_KEY is not set in environment variables." }, { status: 500 })
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+    const isOAuth = apiKey.startsWith("AQ.")
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json"
+    }
 
-    // Perform a tiny test generation
-    const result = await model.generateContent("Say 'OK'")
-    const text = result.response.text()
+    let url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+
+    if (isOAuth) {
+      headers["Authorization"] = `Bearer ${apiKey}`
+    } else {
+      url += `?key=${apiKey}`
+    }
+
+    const payload = {
+      contents: [{ role: "user", parts: [{ text: "Say 'OK'" }] }],
+      generationConfig: { temperature: 0.2 }
+    }
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload)
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+        throw new Error(JSON.stringify(data))
+    }
+
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response"
 
     return NextResponse.json({ 
         status: "success", 
