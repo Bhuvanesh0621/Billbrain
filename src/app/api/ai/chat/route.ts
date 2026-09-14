@@ -26,32 +26,45 @@ export async function POST(req: Request) {
 
     // 1. API Key Validation
     const apiKey = process.env.GEMINI_API_KEY
-    if (!apiKey || apiKey.startsWith("AQ.")) {
+    if (!apiKey) {
       return NextResponse.json({ 
-        reply: "⚠️ **Invalid API Key Detected!**\n\nI need a valid Google Gemini API Key to become fully intelligent and answer *any* database question dynamically.\n\nYou provided an OAuth Access Token (`AQ...`) instead of an API Key.\n\n**To fix this:**\n1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey)\n2. Click 'Create API Key'\n3. Copy the key (it starts with `AIzaSy...`)\n4. Paste it in your `.env` file as `GEMINI_API_KEY=AIzaSy...`\n5. Restart the server!" 
+        reply: "⚠️ **Missing API Key!** Please add your GEMINI_API_KEY to your `.env` file." 
       })
     }
 
     // 2. Fetch all user data to feed as Context (RAG)
-    const [expenses, incomes, budgets] = await Promise.all([
+    const [expenses, incomes, budgets, bills, subscriptions, payments] = await Promise.all([
       prisma.expense.findMany({ where: { userId: user.id }, orderBy: { date: 'desc' } }),
       prisma.income.findMany({ where: { userId: user.id }, orderBy: { date: 'desc' } }),
-      prisma.budget.findMany({ where: { userId: user.id } })
+      prisma.budget.findMany({ where: { userId: user.id } }),
+      prisma.bill.findMany({ where: { userId: user.id }, include: { items: true }, orderBy: { dueDate: 'asc' } }),
+      prisma.subscription.findMany({ where: { userId: user.id } }),
+      prisma.payment.findMany({ 
+        where: { bill: { userId: user.id } },
+        include: { bill: true },
+        orderBy: { paymentDate: 'desc' }
+      })
     ])
 
     // Compress data into CSV format for Token efficiency
     const expenseData = expenses.map(e => `${new Date(e.date).toISOString().split('T')[0]},${e.amount},${e.category},${e.paymentMethod || 'Unknown'},${e.description || 'none'}`).join('\n')
     const incomeData = incomes.map(i => `${new Date(i.date).toISOString().split('T')[0]},${i.amount},${i.source}`).join('\n')
     const budgetData = budgets.map(b => `${b.category},${b.amount},${b.period}`).join('\n')
+    const billData = bills.map(b => `${b.id},${b.provider},${b.category},${b.amount},${b.status},${b.dueDate ? new Date(b.dueDate).toISOString().split('T')[0] : 'None'}`).join('\n')
+    const subData = subscriptions.map(s => `${s.provider},${s.amount},${s.frequency},${s.status},${s.nextDueDate ? new Date(s.nextDueDate).toISOString().split('T')[0] : 'None'}`).join('\n')
+    const payData = payments.map(p => `${new Date(p.paymentDate).toISOString().split('T')[0]},${p.amount},${p.method || 'Unknown'},${p.status},For Bill: ${p.bill.provider}`).join('\n')
 
     const systemPrompt = `You are BillBrain AI, a highly intelligent financial assistant. 
 You have direct access to the user's personal financial database records.
 Analyze the provided data and answer the user's question accurately.
-Do NOT mention that you are reading CSV data. Just act like a smart agent that knows their database.
-Format your response beautifully using markdown (bolding, lists, tables).
-You understand English, Tamil, and Tanglish. If the user asks in Tanglish/Tamil, reply in the same format.
 
-Here is the user's database records:
+CRITICAL RULES:
+1. Do NOT invent or hallucinate data. Only use the data provided below.
+2. If the user asks for information not present in the data, clearly state that it is unavailable.
+3. Perform all necessary math (sums, averages) accurately based on the data.
+4. Format your response beautifully using markdown (bolding, lists, tables).
+5. Do NOT mention that you are reading CSV data. Act like a smart agent querying a database.
+6. You understand English, Tamil, and Tanglish. If the user asks in Tanglish/Tamil, reply in the same format.
 
 --- EXPENSES (Date, Amount, Category, Payment Method, Description) ---
 ${expenseData || 'No expenses recorded yet.'}
@@ -62,6 +75,15 @@ ${incomeData || 'No incomes recorded yet.'}
 --- BUDGETS (Category, Amount, Period) ---
 ${budgetData || 'No budgets set.'}
 
+--- BILLS (ID, Provider, Category, Amount, Status, Due Date) ---
+${billData || 'No bills recorded yet.'}
+
+--- SUBSCRIPTIONS (Provider, Amount, Frequency, Status, Next Due Date) ---
+${subData || 'No subscriptions recorded yet.'}
+
+--- PAYMENTS (Date, Amount, Method, Status, Bill Provider) ---
+${payData || 'No payments recorded yet.'}
+
 USER QUESTION: "${userMessage}"
 `
 
@@ -69,7 +91,12 @@ USER QUESTION: "${userMessage}"
     const genAI = new GoogleGenerativeAI(apiKey)
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
 
-    const result = await model.generateContent(systemPrompt)
+    // Use a timeout for the API call (Optional but good practice)
+    const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: systemPrompt }] }],
+        generationConfig: { temperature: 0.2 } // Lower temperature for more analytical/factual answers
+    })
+    
     const reply = result.response.text()
 
     return NextResponse.json({ reply })
@@ -77,9 +104,8 @@ USER QUESTION: "${userMessage}"
   } catch (error: any) {
     console.error("AI Chat error:", error)
     
-    // Handle specific Google API Errors gracefully
     if (error.message?.includes("API key not valid")) {
-      return NextResponse.json({ reply: "⚠️ **Invalid API Key!** Your GEMINI_API_KEY is not recognized by Google. Please get a new one from Google AI Studio and update your `.env` file." })
+      return NextResponse.json({ reply: "⚠️ **Invalid API Key!** Your GEMINI_API_KEY is not recognized by Google. Please check your `.env` file." })
     }
 
     return NextResponse.json({ error: "Failed to generate AI response" }, { status: 500 })
