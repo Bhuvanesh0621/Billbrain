@@ -40,7 +40,7 @@ export function Sidebar() {
 
   return (
     <aside 
-      className={`${isCollapsed ? 'w-20' : 'w-64'} bg-sidebar border-r border-sidebar-border hidden md:flex flex-col h-screen sticky top-0 transition-all duration-300 z-40`}
+      className={`${isCollapsed ? 'w-20' : 'w-64'} bg-sidebar/80 backdrop-blur-xl border-r border-sidebar-border hidden md:flex flex-col h-screen sticky top-0 transition-all duration-300 z-40`}
     >
       <AddExpenseModal open={expenseModalOpen} onOpenChange={setExpenseModalOpen} />
 
@@ -95,7 +95,7 @@ export function Sidebar() {
         })}
       </div>
 
-      <div className="p-3 border-t border-sidebar-border space-y-1 bg-sidebar">
+      <div className="p-3 border-t border-sidebar-border space-y-1 bg-transparent">
         {bottomNav.map((item) => {
           const isActive = pathname === item.href
           let i18nKey = item.title.toLowerCase().replace(" ", "_")
