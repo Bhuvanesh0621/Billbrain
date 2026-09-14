@@ -8,6 +8,7 @@ import { Sparkles, Calendar as CalendarIcon, Target, TrendingUp, IndianRupee, Wa
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal"
+import { AddIncomeModal } from "@/components/incomes/AddIncomeModal"
 import { useLanguage } from "@/components/providers/LanguageProvider"
 import { useState, useEffect } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts"
@@ -19,6 +20,7 @@ export default function DashboardPage() {
   const { data: session } = useSession()
   const { t } = useLanguage()
   const [expenseModalOpen, setExpenseModalOpen] = useState(false)
+  const [incomeModalOpen, setIncomeModalOpen] = useState(false)
   const [expenses, setExpenses] = useState<any[]>([])
   const [budgets, setBudgets] = useState<any[]>([])
   const [incomes, setIncomes] = useState<any[]>([])
@@ -206,20 +208,14 @@ export default function DashboardPage() {
           <p className="text-muted-foreground mt-1 text-lg">{t("how_money_moving")}</p>
         </div>
         <div className="flex gap-3">
+          <AddIncomeModal open={incomeModalOpen} onOpenChange={(open) => {
+            setIncomeModalOpen(open)
+            if (!open) fetchData()
+          }} />
           <Button onClick={() => setExpenseModalOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hidden md:flex">
             <Plus className="w-4 h-4 mr-2" /> Add Expense
           </Button>
-          {/* We will add an Income modal later if needed, for now just a simple prompt or link */}
-          <Button onClick={() => {
-            const amount = prompt("Enter income amount (₹):")
-            if (amount && !isNaN(Number(amount))) {
-              fetch("/api/incomes", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ amount, source: "Manual Entry" })
-              }).then(() => fetchData())
-            }
-          }} variant="outline" className="border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 hidden md:flex">
+          <Button onClick={() => setIncomeModalOpen(true)} variant="outline" className="border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 hidden md:flex">
             <Plus className="w-4 h-4 mr-2" /> Add Income
           </Button>
           <Button onClick={exportToPDF} variant="outline" className="border-primary/30 text-primary hover:bg-primary/10 hidden md:flex">
