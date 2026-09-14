@@ -69,11 +69,11 @@ export async function POST(req: Request) {
 
       const whereClause: any = { 
         userId: user.id, 
-        category: { contains: category, mode: 'insensitive' } 
+        category: { contains: category } 
       }
       
-      if (isUpi) whereClause.paymentMethod = { contains: "UPI", mode: 'insensitive' }
-      if (isCash) whereClause.paymentMethod = { contains: "Cash", mode: 'insensitive' }
+      if (isUpi) whereClause.paymentMethod = { contains: "UPI" }
+      if (isCash) whereClause.paymentMethod = { contains: "Cash" }
 
       const expenses = await prisma.expense.findMany({ where: whereClause })
       const total = expenses.reduce((acc, curr) => acc + curr.amount, 0)
