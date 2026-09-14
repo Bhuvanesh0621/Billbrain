@@ -151,17 +151,33 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground overflow-x-hidden;
+    /* Soft ambient mesh background */
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(260, 100%, 75%, 0.1) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(200, 100%, 75%, 0.1) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, hsla(330, 100%, 75%, 0.1) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, hsla(160, 100%, 75%, 0.1) 0px, transparent 50%);
+    background-attachment: fixed;
+    background-size: 100% 100%;
+  }
+  .dark body {
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(260, 100%, 65%, 0.05) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(200, 100%, 65%, 0.05) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, hsla(330, 100%, 65%, 0.05) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, hsla(160, 100%, 65%, 0.05) 0px, transparent 50%);
   }
   html {
     @apply font-sans antialiased;
+    scroll-behavior: smooth;
   }
 }
 
 .glass-card {
-  @apply bg-card border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-0.5 rounded-[1.25rem];
+  @apply bg-card/60 backdrop-blur-3xl border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 rounded-3xl;
 }
 
 .dark .glass-card {
-  @apply bg-[#0a0a0c] border-[#27272a] shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:shadow-[0_8px_30px_rgba(167,139,250,0.1)];
+  @apply bg-[#0a0a0c]/60 backdrop-blur-3xl border-[#27272a] shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:shadow-[0_8px_30px_rgba(167,139,250,0.1)];
 }
