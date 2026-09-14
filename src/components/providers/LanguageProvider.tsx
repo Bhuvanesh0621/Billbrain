@@ -21,7 +21,7 @@ const translations: Record<Language, Record<string, string>> = {
     "calendar": "Calendar",
     "household": "Household",
     "ai_assistant": "BillBrain AI",
-    "track_expense": "Track Expense",
+    "track_expense": "Add Expense",
     "spent_today": "Spent Today",
     "this_week": "This Week",
     "this_month": "This Month",
