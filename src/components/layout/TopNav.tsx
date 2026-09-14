@@ -159,9 +159,6 @@ export function TopNav() {
             <DropdownMenuItem>
               <Link href="/dashboard/settings" className="w-full h-full cursor-pointer">Profile Settings</Link>
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Link href="/dashboard/household" className="w-full h-full cursor-pointer">Household Settings</Link>
-            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive cursor-pointer focus:bg-destructive focus:text-destructive-foreground" onClick={() => signOut({ callbackUrl: "/auth/login" })}>
               Log out
