@@ -38,6 +38,12 @@ const translations: Record<Language, Record<string, string>> = {
     "expense_timeline": "Expense Timeline",
     "daily_spending": "Daily Spending",
     "smart_search": "Smart Search",
+    "instantly_find": "Instantly find any expense, bill, or subscription and see total aggregates.",
+    "search_placeholder": "Search for 'petrol', 'loan', 'Netflix', 'food'...",
+    "no_records": "No records found matching",
+    "total_amount": "Total Amount",
+    "aggregated_from": "Aggregated from",
+    "matched_items": "Matched Items"
   },
   ta: {
     "dashboard": "டேஷ்போர்டு (Dashboard)",
@@ -66,6 +72,12 @@ const translations: Record<Language, Record<string, string>> = {
     "expense_timeline": "செலவு காலவரிசை",
     "daily_spending": "தினசரி செலவுகள்",
     "smart_search": "ஸ்மார்ட் தேடல் (Smart Search)",
+    "instantly_find": "எந்தவொரு செலவு, பில் அல்லது சந்தாவையும் உடனடியாகக் கண்டுபிடித்து மொத்தத் தொகையைப் பார்க்கவும்.",
+    "search_placeholder": "'பெட்ரோல்', 'கடன்', 'நெட்ஃபிக்ஸ்', 'உணவு' எனத் தேடவும்...",
+    "no_records": "பொருத்தமான பதிவுகள் எதுவும் இல்லை",
+    "total_amount": "மொத்தத் தொகை",
+    "aggregated_from": "மொத்தமாக",
+    "matched_items": "பொருந்திய உருப்படிகள்"
   }
 }
 

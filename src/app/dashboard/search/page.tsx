@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { Search, Loader2, IndianRupee, FileText, Receipt, RefreshCw } from "lucide-react"
+import { useLanguage } from "@/components/providers/LanguageProvider"
 
 export default function SmartSearchPage() {
+  const { t } = useLanguage()
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<any[]>([])
   const [totalAmount, setTotalAmount] = useState(0)
@@ -50,9 +52,9 @@ export default function SmartSearchPage() {
   return (
     <div className="flex-1 p-8 max-w-5xl mx-auto w-full">
       <div className="mb-8 text-center">
-        <h1 className="text-4xl font-bold mb-4 tracking-tight">Smart Search</h1>
+        <h1 className="text-4xl font-bold mb-4 tracking-tight">{t("smart_search")}</h1>
         <p className="text-muted-foreground text-lg">
-          Instantly find any expense, bill, or subscription and see total aggregates.
+          {t("instantly_find")}
         </p>
       </div>
 
@@ -68,7 +70,7 @@ export default function SmartSearchPage() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search for 'petrol', 'loan', 'Netflix', 'food'..."
+          placeholder={t("search_placeholder")}
           className="block w-full pl-12 pr-4 py-4 bg-background border-2 border-muted rounded-2xl text-lg focus:ring-0 focus:border-primary transition-colors"
           autoFocus
         />
@@ -76,24 +78,24 @@ export default function SmartSearchPage() {
 
       {query && !isLoading && results.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
-          <p className="text-lg">No records found matching "{query}".</p>
+          <p className="text-lg">{t("no_records")} "{query}".</p>
         </div>
       )}
 
       {results.length > 0 && (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background border border-primary/20 rounded-3xl p-8 flex flex-col items-center justify-center shadow-sm">
-            <p className="text-sm font-medium uppercase tracking-wider text-muted-foreground mb-2">Total Amount</p>
+            <p className="text-sm font-medium uppercase tracking-wider text-muted-foreground mb-2">{t("total_amount")}</p>
             <div className="flex items-center text-5xl font-black text-primary">
               <IndianRupee className="h-10 w-10 mr-1" />
               {totalAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
             </div>
-            <p className="text-muted-foreground mt-2">Aggregated from {results.length} matched item{results.length !== 1 ? 's' : ''}</p>
+            <p className="text-muted-foreground mt-2">{t("aggregated_from")} {results.length} {t("matched_items")}</p>
           </div>
 
           <div className="bg-card border rounded-2xl overflow-hidden shadow-sm">
             <div className="px-6 py-4 border-b bg-muted/30">
-              <h3 className="font-semibold text-lg">Matched Items</h3>
+              <h3 className="font-semibold text-lg">{t("matched_items")}</h3>
             </div>
             <div className="divide-y">
               {results.map((item, index) => (
