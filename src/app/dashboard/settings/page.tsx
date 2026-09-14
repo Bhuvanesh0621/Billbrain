@@ -1,5 +1,6 @@
 "use client"
 
+import { useSession } from "next-auth/react"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -9,8 +10,10 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { User, Bell, Shield, Database, Moon, Sun, Monitor, AlertTriangle } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export default function SettingsPage() {
+  const { data: session } = useSession()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
@@ -19,15 +22,17 @@ export default function SettingsPage() {
     setMounted(true)
   }, [])
 
+  const user = session?.user
+
   return (
-    <div className="space-y-8 pb-10 max-w-5xl">
+    <div className="space-y-8 pb-10 max-w-5xl mx-auto">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Settings</h1>
         <p className="text-muted-foreground mt-1 text-lg">Manage your account preferences, appearance, and security.</p>
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="mb-8 bg-muted/50 p-1 rounded-xl flex flex-wrap h-auto">
+        <TabsList className="mb-8 bg-muted/50 p-1 rounded-xl flex flex-wrap h-auto border border-border/50 backdrop-blur-md shadow-sm">
           <TabsTrigger value="profile" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm py-2">
             <User className="w-4 h-4 mr-2" /> Profile
           </TabsTrigger>
@@ -46,16 +51,19 @@ export default function SettingsPage() {
         </TabsList>
 
         <TabsContent value="profile" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <Card className="shadow-sm border-border/50">
-            <CardHeader className="border-b border-border/50 bg-muted/5 pb-4">
+          <Card className="glass-card shadow-sm border-border/50 overflow-hidden">
+            <CardHeader className="border-b border-border/50 bg-muted/20 pb-4">
               <CardTitle>Profile Information</CardTitle>
               <CardDescription>Update your personal details here.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6 pt-6">
+            <CardContent className="space-y-6 pt-6 bg-card/40">
               <div className="flex items-center space-x-6 mb-4">
-                <div className="h-20 w-20 rounded-full bg-primary/10 text-primary flex items-center justify-center text-2xl font-bold">
-                  DU
-                </div>
+                <Avatar className="h-20 w-20 ring-4 ring-background shadow-md">
+                  <AvatarImage src={user?.image || ""} alt={user?.name || "User"} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
+                    {user?.name?.[0] || "U"}
+                  </AvatarFallback>
+                </Avatar>
                 <div>
                   <Button variant="outline" className="mb-2 shadow-sm">Upload new avatar</Button>
                   <p className="text-xs text-muted-foreground">JPG, GIF or PNG. Max size of 800K</p>
@@ -64,11 +72,11 @@ export default function SettingsPage() {
               <div className="grid sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" defaultValue="Demo User" className="bg-muted/30" />
+                  <Input id="name" defaultValue={user?.name || ""} className="bg-background/50 focus:bg-background transition-colors" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
-                  <Input id="email" type="email" defaultValue="user@example.com" disabled className="bg-muted/50 cursor-not-allowed" />
+                  <Input id="email" type="email" defaultValue={user?.email || ""} disabled className="bg-muted/50 cursor-not-allowed text-muted-foreground" />
                 </div>
               </div>
               <div className="pt-4 border-t border-border/50">
@@ -79,8 +87,8 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="appearance" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <Card className="shadow-sm border-border/50">
-            <CardHeader className="border-b border-border/50 bg-muted/5 pb-4">
+          <Card className="glass-card shadow-sm border-border/50">
+            <CardHeader className="border-b border-border/50 bg-muted/20 pb-4">
               <CardTitle>Theme Preferences</CardTitle>
               <CardDescription>Customize the look and feel of BillBrain.</CardDescription>
             </CardHeader>
@@ -117,8 +125,8 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="preferences" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <Card className="shadow-sm border-border/50">
-            <CardHeader className="border-b border-border/50 bg-muted/5 pb-4">
+          <Card className="glass-card shadow-sm border-border/50">
+            <CardHeader className="border-b border-border/50 bg-muted/20 pb-4">
               <CardTitle>Regional & Currency</CardTitle>
               <CardDescription>Set your local currency format and region.</CardDescription>
             </CardHeader>
@@ -145,8 +153,8 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="security" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <Card className="shadow-sm border-border/50">
-            <CardHeader className="border-b border-border/50 bg-muted/5 pb-4">
+          <Card className="glass-card shadow-sm border-border/50">
+            <CardHeader className="border-b border-border/50 bg-muted/20 pb-4">
               <CardTitle>Security Settings</CardTitle>
               <CardDescription>Manage your password and security credentials.</CardDescription>
             </CardHeader>
@@ -173,7 +181,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="data" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <Card className="border-destructive/30 shadow-sm overflow-hidden">
+          <Card className="glass-card border-destructive/30 shadow-sm overflow-hidden">
             <div className="h-1.5 w-full bg-destructive"></div>
             <CardHeader className="bg-destructive/5 pb-4 border-b border-destructive/10">
               <CardTitle className="text-destructive flex items-center">
