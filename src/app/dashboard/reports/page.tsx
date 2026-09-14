@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { IndianRupee, ArrowDownCircle, ArrowUpCircle, Wallet, Loader2, Calendar as CalendarIcon, FileText } from "lucide-react"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 
 export default function ReportsPage() {
   // Default to last 7 days
@@ -38,6 +40,73 @@ export default function ReportsPage() {
       setIsLoading(false)
     }
   }
+
+  const exportToPDF = () => {
+    if (!reportData) return;
+    const doc = new jsPDF();
+    
+    // Header Background
+    doc.setFillColor(109, 40, 217); 
+    doc.rect(0, 0, 210, 40, 'F');
+    
+    // Header Text
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont("helvetica", "bold");
+    doc.text("BILLBRAIN", 14, 22);
+    
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text("Custom Audit Report", 14, 30);
+    doc.text(`${new Date(startDate).toLocaleDateString('en-US')} to ${new Date(endDate).toLocaleDateString('en-US')}`, 130, 30);
+    
+    // Reset Text Color
+    doc.setTextColor(40, 40, 40);
+
+    // Summary
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("Financial Summary", 14, 55);
+    
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Total Income:  INR ${reportData.summary.totalIncome.toLocaleString('en-US')}`, 14, 65);
+    doc.text(`Total Spent:   INR ${reportData.summary.totalExpense.toLocaleString('en-US')}`, 14, 72);
+    
+    doc.setFont("helvetica", "bold");
+    const balanceColor = reportData.summary.netBalance >= 0 ? [34, 197, 94] : [239, 68, 68];
+    doc.setTextColor(balanceColor[0], balanceColor[1], balanceColor[2]);
+    doc.text(`Net Balance:   INR ${reportData.summary.netBalance.toLocaleString('en-US')}`, 14, 79);
+    doc.setTextColor(40, 40, 40);
+
+    // Clean data
+    const safeText = (str: string) => (str || '').replace(/[^\x20-\x7E]/g, '').trim() || '-';
+    const tableData = reportData.transactions.map(t => [
+      new Date(t.date).toLocaleDateString('en-US'),
+      t.type,
+      safeText(t.category),
+      safeText(t.description),
+      `${t.type === 'Income' ? '+' : '-'} INR ${t.amount.toLocaleString('en-US')}`
+    ]);
+
+    autoTable(doc, {
+      startY: 90,
+      head: [['Date', 'Type', 'Category', 'Description', 'Amount']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [109, 40, 217], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 248, 250] },
+      styles: { fontSize: 10, cellPadding: 5, textColor: [60, 60, 60] },
+      columnStyles: { 4: { halign: 'right', fontStyle: 'bold' } }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY || 90;
+    doc.setFontSize(9);
+    doc.setTextColor(150, 150, 150);
+    doc.text("Generated securely by BillBrain.", 14, finalY + 15);
+
+    doc.save(`billbrain_report_${startDate}_to_${endDate}.pdf`);
+  };
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12">
@@ -129,20 +198,10 @@ export default function ReportsPage() {
                 <CardDescription>All recorded financial activity between {new Date(startDate).toLocaleDateString()} and {new Date(endDate).toLocaleDateString()}.</CardDescription>
               </div>
               <button 
-                onClick={() => {
-                  const csvContent = "data:text/csv;charset=utf-8," 
-                    + "Date,Type,Category,Description,Amount\n" 
-                    + reportData.transactions.map(t => `${new Date(t.date).toLocaleDateString('en-GB')},${t.type},${t.category},${t.description || ''},${t.amount}`).join("\n")
-                  const encodedUri = encodeURI(csvContent)
-                  const link = document.createElement("a")
-                  link.setAttribute("href", encodedUri)
-                  link.setAttribute("download", `billbrain_report_${startDate}_to_${endDate}.csv`)
-                  document.body.appendChild(link)
-                  link.click()
-                }}
+                onClick={exportToPDF}
                 className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-colors"
               >
-                <FileText className="mr-2 h-4 w-4" /> Download CSV
+                <FileText className="mr-2 h-4 w-4" /> Download PDF
               </button>
             </CardHeader>
             <CardContent className="p-0">
