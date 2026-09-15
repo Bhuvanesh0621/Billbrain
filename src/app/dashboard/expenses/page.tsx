@@ -4,15 +4,19 @@ import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { PieChart, List, Calendar as CalendarIcon, Filter, Search, ArrowDownRight, ArrowUpRight, Receipt, Plus } from "lucide-react"
+import { PieChart, List, Calendar as CalendarIcon, Filter, Search, ArrowDownRight, ArrowUpRight, Receipt, Plus, Pencil, Trash2, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal"
+import { EditExpenseModal } from "@/components/expenses/EditExpenseModal"
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [expenseModalOpen, setExpenseModalOpen] = useState(false)
+  const [editingExpense, setEditingExpense] = useState<any>(null)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const fetchExpenses = async () => {
     try {
@@ -54,12 +58,40 @@ export default function ExpensesPage() {
     return groups
   }, {})
 
+  const handleDeleteExpense = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this expense?")) return
+    setDeletingId(id)
+    try {
+      const res = await fetch(`/api/expenses/${id}`, { method: "DELETE" })
+      if (res.ok) {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("billbrain:refresh"))
+        }
+        fetchExpenses()
+      } else {
+        alert("Failed to delete expense")
+      }
+    } catch (err) {
+      console.error(err)
+      alert("Error deleting expense")
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   return (
     <div className="space-y-8 pb-10 max-w-5xl mx-auto">
       <AddExpenseModal 
         open={expenseModalOpen} 
         onOpenChange={setExpenseModalOpen}
         onSuccess={fetchExpenses} 
+      />
+
+      <EditExpenseModal 
+        expense={editingExpense}
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        onSuccess={fetchExpenses}
       />
 
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -128,8 +160,38 @@ export default function ExpensesPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="text-right sm:text-right font-bold text-lg text-foreground flex items-center sm:justify-end">
-                      ₹{expense.amount.toLocaleString()}
+                    <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+                      <span className="font-bold text-lg text-foreground">
+                        ₹{expense.amount.toLocaleString()}
+                      </span>
+                      <div className="flex items-center space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            setEditingExpense(expense)
+                            setEditModalOpen(true)
+                          }}
+                          title="Edit Expense"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDeleteExpense(expense.id)}
+                          disabled={deletingId === expense.id}
+                          title="Delete Expense"
+                        >
+                          {deletingId === expense.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}

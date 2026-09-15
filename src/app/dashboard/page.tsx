@@ -4,11 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
-import { Sparkles, Calendar as CalendarIcon, Target, TrendingUp, IndianRupee, Wallet, CheckCircle2, ArrowUpRight, ArrowDownRight, Plus, Loader2, Receipt, ArrowDownToLine, ArrowUpFromLine } from "lucide-react"
+import { Sparkles, Calendar as CalendarIcon, Target, TrendingUp, IndianRupee, Wallet, CheckCircle2, ArrowUpRight, ArrowDownRight, Plus, Loader2, Receipt, ArrowDownToLine, ArrowUpFromLine, Pencil, Trash2 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal"
 import { AddIncomeModal } from "@/components/incomes/AddIncomeModal"
+import { EditExpenseModal } from "@/components/expenses/EditExpenseModal"
+import { EditIncomeModal } from "@/components/incomes/EditIncomeModal"
 import { useLanguage } from "@/components/providers/LanguageProvider"
 import { useState, useEffect } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts"
@@ -21,6 +23,11 @@ export default function DashboardPage() {
   const { t } = useLanguage()
   const [expenseModalOpen, setExpenseModalOpen] = useState(false)
   const [incomeModalOpen, setIncomeModalOpen] = useState(false)
+  const [editingExpense, setEditingExpense] = useState<any>(null)
+  const [editExpenseOpen, setEditExpenseOpen] = useState(false)
+  const [editingIncome, setEditingIncome] = useState<any>(null)
+  const [editIncomeOpen, setEditIncomeOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [expenses, setExpenses] = useState<any[]>([])
   const [budgets, setBudgets] = useState<any[]>([])
   const [incomes, setIncomes] = useState<any[]>([])
@@ -108,21 +115,25 @@ export default function DashboardPage() {
   const recentActivity = [
     ...expenses.map(e => ({ 
       id: `exp-${e.id}`, 
+      rawId: e.id,
       amount: e.amount, 
       date: e.date, 
       category: e.category, 
       title: e.category, 
       subtitle: e.description || e.paymentMethod || 'No description', 
-      isIncome: false 
+      isIncome: false,
+      raw: e 
     })),
     ...incomes.map(i => ({ 
       id: `inc-${i.id}`, 
+      rawId: i.id,
       amount: i.amount, 
       date: i.date, 
       category: 'Income', 
       title: 'Income', 
       subtitle: i.source || 'Manual Entry', 
-      isIncome: true 
+      isIncome: true,
+      raw: i 
     }))
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
@@ -221,12 +232,64 @@ export default function DashboardPage() {
   if (currentHour < 12) greetingKey = "good_morning"
   else if (currentHour < 17) greetingKey = "good_afternoon"
 
+  const handleDeleteTransaction = async (e: React.MouseEvent, item: any) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const itemType = item.isIncome ? "income" : "expense"
+    if (!confirm(`Are you sure you want to delete this ${itemType}?`)) return
+
+    setDeletingId(item.id)
+    try {
+      const endpoint = item.isIncome ? `/api/incomes/${item.rawId}` : `/api/expenses/${item.rawId}`
+      const res = await fetch(endpoint, { method: "DELETE" })
+      if (res.ok) {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("billbrain:refresh"))
+        }
+        fetchData()
+      } else {
+        alert(`Failed to delete ${itemType}`)
+      }
+    } catch (err) {
+      console.error(err)
+      alert(`Error deleting ${itemType}`)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const handleEditTransaction = (e: React.MouseEvent, item: any) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (item.isIncome) {
+      setEditingIncome(item.raw)
+      setEditIncomeOpen(true)
+    } else {
+      setEditingExpense(item.raw)
+      setEditExpenseOpen(true)
+    }
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both">
       <AddExpenseModal 
         open={expenseModalOpen} 
         onOpenChange={setExpenseModalOpen}
         onSuccess={fetchData} 
+      />
+
+      <EditExpenseModal 
+        expense={editingExpense}
+        open={editExpenseOpen}
+        onOpenChange={setEditExpenseOpen}
+        onSuccess={fetchData}
+      />
+
+      <EditIncomeModal 
+        income={editingIncome}
+        open={editIncomeOpen}
+        onOpenChange={setEditIncomeOpen}
+        onSuccess={fetchData}
       />
 
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -330,18 +393,19 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-4">
                 {recentActivity.slice(0, 10).map((item) => (
-                  <Link href={`/dashboard/search?q=${encodeURIComponent(item.category)}`} key={item.id} className="block">
-                    <div className="flex items-center justify-between p-3 border border-border/50 rounded-lg hover:bg-muted/50 transition-all hover:scale-[1.01] cursor-pointer">
-                      <div className="flex items-center space-x-4 overflow-hidden">
-                        <div className={`h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-colors ${item.isIncome ? 'bg-emerald-100 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white' : 'bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground'}`}>
-                          {item.isIncome ? <ArrowDownToLine className="h-6 w-6" /> : <Receipt className="h-6 w-6" />}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
-                          <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>
-                        </div>
+                  <div key={item.id} className="flex items-center justify-between p-3 border border-border/50 rounded-lg hover:bg-muted/50 transition-all group">
+                    <Link href={`/dashboard/search?q=${encodeURIComponent(item.category)}`} className="flex items-center space-x-4 overflow-hidden flex-1 min-w-0">
+                      <div className={`h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-colors ${item.isIncome ? 'bg-emerald-100 text-emerald-600' : 'bg-primary/10 text-primary'}`}>
+                        {item.isIncome ? <ArrowDownToLine className="h-6 w-6" /> : <Receipt className="h-6 w-6" />}
                       </div>
-                      <div className="flex flex-col items-end shrink-0 ml-4">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>
+                      </div>
+                    </Link>
+
+                    <div className="flex items-center space-x-3 shrink-0 ml-4">
+                      <div className="flex flex-col items-end">
                         <div className={`font-bold text-base ${item.isIncome ? 'text-emerald-600' : 'text-foreground'}`}>
                           {item.isIncome ? '+' : '-'}₹{item.amount.toLocaleString()}
                         </div>
@@ -349,8 +413,33 @@ export default function DashboardPage() {
                           {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </div>
                       </div>
+                      <div className="flex items-center space-x-1 pl-2 border-l border-border/50">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          onClick={(e) => handleEditTransaction(e, item)}
+                          title={item.isIncome ? "Edit Income" : "Edit Expense"}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => handleDeleteTransaction(e, item)}
+                          disabled={deletingId === item.id}
+                          title={item.isIncome ? "Delete Income" : "Delete Expense"}
+                        >
+                          {deletingId === item.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
-                  </Link>
+                  </div>
                 ))}
               </div>
             )}

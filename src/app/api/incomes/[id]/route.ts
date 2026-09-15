@@ -14,26 +14,26 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     
     const { id } = await params
 
-    const expense = await prisma.expense.findUnique({
+    const income = await prisma.income.findUnique({
       where: { id }
     })
 
-    if (!expense) {
-      return NextResponse.json({ error: "Expense not found" }, { status: 404 })
+    if (!income) {
+      return NextResponse.json({ error: "Income not found" }, { status: 404 })
     }
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email }
     })
 
-    if (expense.userId !== user?.id) {
+    if (income.userId !== user?.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    return NextResponse.json(expense)
+    return NextResponse.json(income)
   } catch (error) {
-    console.error("Failed to fetch expense:", error)
-    return NextResponse.json({ error: "Failed to fetch expense" }, { status: 500 })
+    console.error("Failed to fetch income:", error)
+    return NextResponse.json({ error: "Failed to fetch income" }, { status: 500 })
   }
 }
 
@@ -50,39 +50,35 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     
     const { id } = await params
 
-    const existingExpense = await prisma.expense.findUnique({
+    const existingIncome = await prisma.income.findUnique({
       where: { id }
     })
 
-    if (!existingExpense) {
-      return NextResponse.json({ error: "Expense not found" }, { status: 404 })
+    if (!existingIncome) {
+      return NextResponse.json({ error: "Income not found" }, { status: 404 })
     }
 
-    if (existingExpense.userId !== user?.id) {
+    if (existingIncome.userId !== user?.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     const body = await req.json()
-    const { amount, category, description, date, paymentMethod, isRecurring, recurrenceRule, notes } = body
+    const { amount, source, date, isRecurring } = body
 
-    const updatedExpense = await prisma.expense.update({
+    const updatedIncome = await prisma.income.update({
       where: { id },
       data: {
-        amount: amount ? parseFloat(amount) : undefined,
-        category,
-        description,
+        amount: amount !== undefined ? parseFloat(amount) : undefined,
+        source: source !== undefined ? source : undefined,
         date: date ? new Date(date) : undefined,
-        paymentMethod,
-        isRecurring,
-        recurrenceRule,
-        notes
+        isRecurring: isRecurring !== undefined ? isRecurring : undefined,
       }
     })
 
-    return NextResponse.json(updatedExpense)
+    return NextResponse.json(updatedIncome)
   } catch (error) {
-    console.error("Failed to update expense:", error)
-    return NextResponse.json({ error: "Failed to update expense" }, { status: 500 })
+    console.error("Failed to update income:", error)
+    return NextResponse.json({ error: "Failed to update income" }, { status: 500 })
   }
 }
 
@@ -99,25 +95,25 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     
     const { id } = await params
 
-    const existingExpense = await prisma.expense.findUnique({
+    const existingIncome = await prisma.income.findUnique({
       where: { id }
     })
 
-    if (!existingExpense) {
-      return NextResponse.json({ error: "Expense not found" }, { status: 404 })
+    if (!existingIncome) {
+      return NextResponse.json({ error: "Income not found" }, { status: 404 })
     }
 
-    if (existingExpense.userId !== user?.id) {
+    if (existingIncome.userId !== user?.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    await prisma.expense.delete({
+    await prisma.income.delete({
       where: { id }
     })
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Failed to delete expense:", error)
-    return NextResponse.json({ error: "Failed to delete expense" }, { status: 500 })
+    console.error("Failed to delete income:", error)
+    return NextResponse.json({ error: "Failed to delete income" }, { status: 500 })
   }
 }
