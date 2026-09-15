@@ -12,6 +12,7 @@ import { Loader2 } from "lucide-react"
 interface AddExpenseModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSuccess?: () => void
 }
 
 const CATEGORIES = [
@@ -25,7 +26,7 @@ const PAYMENT_METHODS = [
   "UPI", "Cash"
 ]
 
-export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
+export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseModalProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   
@@ -64,6 +65,10 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
 
       if (res.ok) {
         onOpenChange(false)
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("billbrain:refresh"))
+        }
+        onSuccess?.()
         router.refresh()
       } else {
         const data = await res.json()

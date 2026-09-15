@@ -5,7 +5,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { IndianRupee, Loader2 } from "lucide-react"
 
-export function AddIncomeModal({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function AddIncomeModal({ 
+  open, 
+  onOpenChange,
+  onSuccess
+}: { 
+  open: boolean; 
+  onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
+}) {
   const [amount, setAmount] = useState("")
   const [source, setSource] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -28,7 +36,11 @@ export function AddIncomeModal({ open, onOpenChange }: { open: boolean; onOpenCh
       if (res.ok) {
         setAmount("")
         setSource("")
-        onOpenChange(false) // Close and trigger refresh
+        onOpenChange(false) // Close modal
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("billbrain:refresh"))
+        }
+        onSuccess?.()
       }
     } catch (error) {
       console.error("Failed to add income", error)

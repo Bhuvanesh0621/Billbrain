@@ -30,10 +30,10 @@ export default function DashboardPage() {
   const fetchData = async () => {
     try {
       const [resExpenses, resBudgets, resInsights, resIncomes] = await Promise.all([
-        fetch("/api/expenses"),
-        fetch("/api/budgets"),
-        fetch("/api/insights"),
-        fetch("/api/incomes")
+        fetch("/api/expenses", { cache: "no-store" }),
+        fetch("/api/budgets", { cache: "no-store" }),
+        fetch("/api/insights", { cache: "no-store" }),
+        fetch("/api/incomes", { cache: "no-store" })
       ])
       if (resExpenses.ok) setExpenses(await resExpenses.json())
       if (resBudgets.ok) setBudgets(await resBudgets.json())
@@ -48,6 +48,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchData()
+
+    const onRefresh = () => {
+      fetchData()
+    }
+
+    window.addEventListener("billbrain:refresh", onRefresh)
+    return () => window.removeEventListener("billbrain:refresh", onRefresh)
   }, [])
 
   const today = new Date()
@@ -216,10 +223,11 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both">
-      <AddExpenseModal open={expenseModalOpen} onOpenChange={(open) => {
-        setExpenseModalOpen(open)
-        if (!open) fetchData()
-      }} />
+      <AddExpenseModal 
+        open={expenseModalOpen} 
+        onOpenChange={setExpenseModalOpen}
+        onSuccess={fetchData} 
+      />
 
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
@@ -229,10 +237,11 @@ export default function DashboardPage() {
           <p className="text-muted-foreground mt-1 text-lg">{t("how_money_moving")}</p>
         </div>
         <div className="flex gap-3">
-          <AddIncomeModal open={incomeModalOpen} onOpenChange={(open) => {
-            setIncomeModalOpen(open)
-            if (!open) fetchData()
-          }} />
+          <AddIncomeModal 
+            open={incomeModalOpen} 
+            onOpenChange={setIncomeModalOpen}
+            onSuccess={fetchData} 
+          />
           <Button onClick={() => setExpenseModalOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hidden md:flex">
             <Plus className="w-4 h-4 mr-2" /> Add Expense
           </Button>

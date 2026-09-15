@@ -16,7 +16,7 @@ export default function ExpensesPage() {
 
   const fetchExpenses = async () => {
     try {
-      const res = await fetch("/api/expenses")
+      const res = await fetch("/api/expenses", { cache: "no-store" })
       if (res.ok) {
         setExpenses(await res.json())
       }
@@ -29,6 +29,13 @@ export default function ExpensesPage() {
 
   useEffect(() => {
     fetchExpenses()
+
+    const onRefresh = () => {
+      fetchExpenses()
+    }
+
+    window.addEventListener("billbrain:refresh", onRefresh)
+    return () => window.removeEventListener("billbrain:refresh", onRefresh)
   }, [])
 
   const filteredExpenses = expenses.filter(e => 
@@ -49,10 +56,11 @@ export default function ExpensesPage() {
 
   return (
     <div className="space-y-8 pb-10 max-w-5xl mx-auto">
-      <AddExpenseModal open={expenseModalOpen} onOpenChange={(open) => {
-        setExpenseModalOpen(open)
-        if (!open) fetchExpenses()
-      }} />
+      <AddExpenseModal 
+        open={expenseModalOpen} 
+        onOpenChange={setExpenseModalOpen}
+        onSuccess={fetchExpenses} 
+      />
 
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
