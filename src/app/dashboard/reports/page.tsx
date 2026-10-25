@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { IndianRupee, ArrowDownCircle, ArrowUpCircle, Wallet, Loader2, Calendar as CalendarIcon, FileText } from "lucide-react"
+import { IndianRupee, ArrowDownCircle, ArrowUpCircle, Wallet, Loader2, Calendar as CalendarIcon, FileText, Mail, CheckCircle2 } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 
@@ -20,6 +20,8 @@ export default function ReportsPage() {
     transactions: any[]
   } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isEmailing, setIsEmailing] = useState(false)
+  const [emailFeedback, setEmailFeedback] = useState<{ success: boolean; message: string; previewUrl?: string | null } | null>(null)
 
   useEffect(() => {
     fetchReport()
@@ -38,6 +40,40 @@ export default function ReportsPage() {
       console.error("Failed to fetch report", error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const sendEmailReport = async () => {
+    if (!startDate || !endDate) return
+    setIsEmailing(true)
+    setEmailFeedback(null)
+    try {
+      const res = await fetch("/api/reports/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ start: startDate, end: endDate }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setEmailFeedback({
+          success: true,
+          message: data.message || "Financial report successfully emailed to your inbox!",
+          previewUrl: data.previewUrl || null,
+        })
+      } else {
+        setEmailFeedback({
+          success: false,
+          message: data.error || "Failed to send email report. Please try again.",
+        })
+      }
+    } catch (err) {
+      console.error("Email report failed:", err)
+      setEmailFeedback({
+        success: false,
+        message: "Network error sending email report.",
+      })
+    } finally {
+      setIsEmailing(false)
     }
   }
 
@@ -192,18 +228,50 @@ export default function ReportsPage() {
 
           {/* Transactions Table */}
           <Card className="shadow-sm border-muted">
-            <CardHeader className="border-b bg-muted/20 flex flex-row items-center justify-between">
+            <CardHeader className="border-b bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <CardTitle>Transaction Log</CardTitle>
                 <CardDescription>All recorded financial activity between {new Date(startDate).toLocaleDateString()} and {new Date(endDate).toLocaleDateString()}.</CardDescription>
               </div>
-              <button 
-                onClick={exportToPDF}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-colors"
-              >
-                <FileText className="mr-2 h-4 w-4" /> Download PDF
-              </button>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={sendEmailReport}
+                  disabled={isEmailing}
+                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-colors shadow-sm cursor-pointer"
+                >
+                  {isEmailing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+                  {isEmailing ? "Sending Email..." : "Email Report to Me"}
+                </button>
+                <button 
+                  onClick={exportToPDF}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-colors shadow-sm cursor-pointer"
+                >
+                  <FileText className="mr-2 h-4 w-4" /> Download PDF
+                </button>
+              </div>
             </CardHeader>
+            {emailFeedback && (
+              <div className={`px-6 py-3 border-b text-sm flex items-center justify-between ${
+                emailFeedback.success 
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" 
+                  : "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
+              }`}>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <span>{emailFeedback.message}</span>
+                </div>
+                {emailFeedback.previewUrl && (
+                  <a 
+                    href={emailFeedback.previewUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="underline text-xs ml-3 font-semibold hover:opacity-80"
+                  >
+                    View Email Preview ↗
+                  </a>
+                )}
+              </div>
+            )}
             <CardContent className="p-0">
               {reportData.transactions.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">

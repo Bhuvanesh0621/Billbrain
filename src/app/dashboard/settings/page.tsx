@@ -9,13 +9,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { User, Bell, Shield, Database, Moon, Sun, Monitor, AlertTriangle } from "lucide-react"
+import { User, Bell, Shield, Database, Moon, Sun, Monitor, AlertTriangle, Mail, CheckCircle2, Loader2 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export default function SettingsPage() {
   const { data: session } = useSession()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false)
+  const [testEmailResult, setTestEmailResult] = useState<{ success: boolean; message: string; previewUrl?: string | null } | null>(null)
 
   // Avoid hydration mismatch
   useEffect(() => {
@@ -124,7 +126,7 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="preferences" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <TabsContent value="preferences" className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
           <Card className="glass-card shadow-sm border-border/50">
             <CardHeader className="border-b border-border/50 bg-muted/20 pb-4">
               <CardTitle>Regional & Currency</CardTitle>
@@ -148,6 +150,86 @@ export default function SettingsPage() {
               <div className="pt-4 border-t border-border/50">
                 <Button className="shadow-sm">Save Preferences</Button>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card shadow-sm border-border/50">
+            <CardHeader className="border-b border-border/50 bg-muted/20 pb-4">
+              <CardTitle className="flex items-center">
+                <Mail className="h-5 w-5 mr-2 text-primary" /> Monthly Email Financial Reports
+              </CardTitle>
+              <CardDescription>Deliver automated financial audit summaries directly to your inbox.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border border-border/50 rounded-xl bg-muted/20">
+                <div className="mb-4 sm:mb-0">
+                  <p className="font-medium text-foreground">Delivery Recipient</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Reports will be dispatched to <strong className="text-foreground">{user?.email || "your registered email"}</strong>
+                  </p>
+                </div>
+                <Button 
+                  onClick={async () => {
+                    setIsSendingTestEmail(true)
+                    setTestEmailResult(null)
+                    try {
+                      const res = await fetch("/api/reports/email", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({})
+                      })
+                      const data = await res.json()
+                      if (res.ok) {
+                        setTestEmailResult({
+                          success: true,
+                          message: data.message || "Test email sent successfully!",
+                          previewUrl: data.previewUrl
+                        })
+                      } else {
+                        setTestEmailResult({
+                          success: false,
+                          message: data.error || "Failed to send test email."
+                        })
+                      }
+                    } catch (err) {
+                      setTestEmailResult({
+                        success: false,
+                        message: "Network error sending test email."
+                      })
+                    } finally {
+                      setIsSendingTestEmail(false)
+                    }
+                  }}
+                  disabled={isSendingTestEmail}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 shadow-sm cursor-pointer"
+                >
+                  {isSendingTestEmail ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+                  {isSendingTestEmail ? "Sending..." : "Send Test Report Now"}
+                </Button>
+              </div>
+
+              {testEmailResult && (
+                <div className={`p-4 rounded-xl text-sm border flex items-center justify-between ${
+                  testEmailResult.success
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                    : "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
+                }`}>
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span>{testEmailResult.message}</span>
+                  </div>
+                  {testEmailResult.previewUrl && (
+                    <a
+                      href={testEmailResult.previewUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline text-xs font-semibold ml-4 hover:opacity-80"
+                    >
+                      View Sent Email Preview ↗
+                    </a>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
