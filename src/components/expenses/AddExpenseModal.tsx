@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2 } from "lucide-react"
+import { Loader2, UploadCloud, X, RefreshCw, Paperclip, Image as ImageIcon } from "lucide-react"
+import { compressImageToDataUrl } from "@/lib/imageUtils"
 
 interface AddExpenseModalProps {
   open: boolean
@@ -23,12 +23,14 @@ const CATEGORIES = [
 ]
 
 const PAYMENT_METHODS = [
-  "UPI", "Cash"
+  "UPI", "Cash", "Card", "Net Banking"
 ]
 
 export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseModalProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [compressing, setCompressing] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   
   const [formData, setFormData] = useState({
     amount: "",
@@ -36,7 +38,10 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
     description: "",
     date: "",
     paymentMethod: "UPI",
-    notes: ""
+    notes: "",
+    isRecurring: false,
+    recurrenceRule: "MONTHLY",
+    receiptUrl: "" as string
   })
 
   useEffect(() => {
@@ -47,10 +52,34 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
         description: "",
         date: new Date().toISOString().split('T')[0],
         paymentMethod: "UPI",
-        notes: ""
+        notes: "",
+        isRecurring: false,
+        recurrenceRule: "MONTHLY",
+        receiptUrl: ""
       })
     }
   }, [open])
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      setCompressing(true)
+      const compressed = await compressImageToDataUrl(file)
+      setFormData(prev => ({ ...prev, receiptUrl: compressed }))
+    } catch (err: any) {
+      console.error(err)
+      alert(err.message || "Failed to process receipt image")
+    } finally {
+      setCompressing(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
+
+  const handleRemoveReceipt = () => {
+    setFormData(prev => ({ ...prev, receiptUrl: "" }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -84,14 +113,14 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[460px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Expense</DialogTitle>
           <DialogDescription>
-            Track a new expense to update your dashboard.
+            Track a new expense, attach a receipt, or configure recurring schedules.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div className="space-y-2">
             <Label htmlFor="amount">Amount (INR)</Label>
             <Input 
@@ -142,7 +171,7 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
             <Label htmlFor="description">Description</Label>
             <Input 
               id="description" 
-              placeholder="e.g. Lunch at Cafe"
+              placeholder="e.g. Grocery run or dinner"
               value={formData.description}
               onChange={(e) => setFormData({...formData, description: e.target.value})}
             />
@@ -160,9 +189,114 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
             />
           </div>
 
-          <DialogFooter className="pt-4">
+          {/* Receipt Attachment Section */}
+          <div className="space-y-2 pt-1 border-t border-border/50">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Paperclip className="w-3.5 h-3.5" /> Receipt Photo
+              </Label>
+              {formData.receiptUrl && (
+                <button
+                  type="button"
+                  onClick={handleRemoveReceipt}
+                  className="text-xs text-destructive hover:underline flex items-center gap-1"
+                >
+                  <X className="w-3 h-3" /> Remove
+                </button>
+              )}
+            </div>
+
+            <input 
+              ref={fileInputRef}
+              type="file" 
+              accept="image/*" 
+              className="hidden" 
+              onChange={handleFileChange}
+            />
+
+            {formData.receiptUrl ? (
+              <div className="relative border border-border/60 rounded-lg p-2 bg-muted/20 flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img 
+                  src={formData.receiptUrl} 
+                  alt="Receipt Preview" 
+                  className="w-14 h-14 object-cover rounded-md border border-border/50 shrink-0"
+                />
+                <div className="text-xs text-muted-foreground truncate flex-1">
+                  <p className="font-medium text-foreground truncate">Receipt Attached</p>
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400">Ready to save</p>
+                </div>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 text-xs shrink-0"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Change
+                </Button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={compressing}
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full border border-dashed border-border/70 hover:border-primary/50 hover:bg-primary/5 rounded-lg p-3 text-center transition-colors flex items-center justify-center gap-2 text-xs text-muted-foreground"
+              >
+                {compressing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    <span>Compressing image...</span>
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud className="w-4 h-4 text-muted-foreground" />
+                    <span>Upload or take a photo of receipt (optional)</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+
+          {/* Recurring Schedule Section */}
+          <div className="space-y-2 pt-2 border-t border-border/50">
+            <div className="flex items-center justify-between">
+              <label htmlFor="isRecurring" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 cursor-pointer">
+                <RefreshCw className="w-3.5 h-3.5" /> Recurring Transaction
+              </label>
+              <input 
+                id="isRecurring"
+                type="checkbox"
+                checked={formData.isRecurring}
+                onChange={(e) => setFormData({ ...formData, isRecurring: e.target.checked })}
+                className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
+              />
+            </div>
+
+            {formData.isRecurring && (
+              <div className="bg-muted/20 p-3 rounded-lg border border-border/50 space-y-2 animate-in fade-in-50 duration-200">
+                <Label htmlFor="recurrenceRule" className="text-xs text-muted-foreground">Repeat Frequency</Label>
+                <select
+                  id="recurrenceRule"
+                  value={formData.recurrenceRule}
+                  onChange={(e) => setFormData({ ...formData, recurrenceRule: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="MONTHLY">Monthly (e.g. Rent, Wi-Fi, Subscriptions)</option>
+                  <option value="WEEKLY">Weekly (e.g. Groceries, Allowance)</option>
+                  <option value="YEARLY">Yearly (e.g. Annual Insurance, Taxes)</option>
+                  <option value="DAILY">Daily (e.g. Daily Transport)</option>
+                </select>
+                <p className="text-[11px] text-muted-foreground">
+                  BillBrain will remind you and automatically log this transaction each billing cycle.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={loading} className="w-full sm:w-auto">
+            <Button type="submit" disabled={loading || compressing} className="w-full sm:w-auto">
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Save Expense
             </Button>

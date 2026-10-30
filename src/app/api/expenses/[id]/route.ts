@@ -63,20 +63,24 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     const body = await req.json()
-    const { amount, category, description, date, paymentMethod, isRecurring, recurrenceRule, notes } = body
+    const { amount, category, description, date, paymentMethod, isRecurring, recurrenceRule, notes, receiptUrl } = body
+
+    const updateData: any = {
+      category,
+      description,
+      paymentMethod,
+      isRecurring: isRecurring !== undefined ? isRecurring : undefined,
+      recurrenceRule: recurrenceRule !== undefined ? recurrenceRule : undefined,
+      notes
+    }
+
+    if (amount !== undefined) updateData.amount = parseFloat(amount)
+    if (date !== undefined) updateData.date = new Date(date)
+    if (receiptUrl !== undefined) updateData.receiptUrl = receiptUrl || null
 
     const updatedExpense = await prisma.expense.update({
       where: { id },
-      data: {
-        amount: amount ? parseFloat(amount) : undefined,
-        category,
-        description,
-        date: date ? new Date(date) : undefined,
-        paymentMethod,
-        isRecurring,
-        recurrenceRule,
-        notes
-      }
+      data: updateData
     })
 
     return NextResponse.json(updatedExpense)

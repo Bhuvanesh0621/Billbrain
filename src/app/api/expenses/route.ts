@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
-    const { amount, category, description, date, paymentMethod, isRecurring, recurrenceRule, notes } = body
+    const { amount, category, description, date, paymentMethod, isRecurring, recurrenceRule, notes, receiptUrl } = body
 
     if (!amount || !category || !date) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
@@ -82,7 +82,8 @@ export async function POST(req: Request) {
         date: new Date(date),
         paymentMethod,
         isRecurring: isRecurring || false,
-        recurrenceRule,
+        recurrenceRule: recurrenceRule || null,
+        receiptUrl: receiptUrl || null,
         notes
       }
     })

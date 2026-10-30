@@ -4,10 +4,12 @@ import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { PieChart, List, Calendar as CalendarIcon, Filter, Search, ArrowDownRight, ArrowUpRight, Receipt, Plus, Pencil, Trash2, Loader2 } from "lucide-react"
+import { PieChart, List, Calendar as CalendarIcon, Filter, Search, ArrowDownRight, ArrowUpRight, Receipt, Plus, Pencil, Trash2, Loader2, Paperclip, RefreshCw, Eye } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal"
 import { EditExpenseModal } from "@/components/expenses/EditExpenseModal"
+import { ReceiptModal } from "@/components/expenses/ReceiptModal"
+import { RecurringBillsCard } from "@/components/recurring/RecurringBillsCard"
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<any[]>([])
@@ -17,6 +19,8 @@ export default function ExpensesPage() {
   const [editingExpense, setEditingExpense] = useState<any>(null)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false)
+  const [selectedReceipt, setSelectedReceipt] = useState<{ url: string; title: string; subtitle?: string } | null>(null)
 
   const fetchExpenses = async () => {
     try {
@@ -79,6 +83,16 @@ export default function ExpensesPage() {
     }
   }
 
+  const handleOpenReceipt = (expense: any) => {
+    if (!expense.receiptUrl) return
+    setSelectedReceipt({
+      url: expense.receiptUrl,
+      title: `${expense.category} Receipt`,
+      subtitle: expense.description || new Date(expense.date).toLocaleDateString()
+    })
+    setReceiptModalOpen(true)
+  }
+
   return (
     <div className="space-y-8 pb-10 max-w-5xl mx-auto">
       <AddExpenseModal 
@@ -94,15 +108,26 @@ export default function ExpensesPage() {
         onSuccess={fetchExpenses}
       />
 
+      <ReceiptModal
+        open={receiptModalOpen}
+        onOpenChange={setReceiptModalOpen}
+        receiptUrl={selectedReceipt?.url || null}
+        title={selectedReceipt?.title}
+        subtitle={selectedReceipt?.subtitle}
+      />
+
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Expense Timeline</h1>
-          <p className="text-muted-foreground mt-1 text-lg">Track and search all your daily transactions.</p>
+          <p className="text-muted-foreground mt-1 text-lg">Track, inspect receipts, and manage recurring payments.</p>
         </div>
         <Button onClick={() => setExpenseModalOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm shrink-0">
           <Plus className="w-4 h-4 mr-2" /> Track Expense
         </Button>
       </div>
+
+      {/* Recurring Bills & Subscriptions Card */}
+      <RecurringBillsCard onProcessed={fetchExpenses} />
 
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
@@ -148,7 +173,25 @@ export default function ExpensesPage() {
                         <Receipt className="h-6 w-6" />
                       </div>
                       <div>
-                        <p className="font-semibold text-foreground text-base">{expense.category}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-foreground text-base">{expense.category}</p>
+                          {expense.isRecurring && (
+                            <span className="flex items-center gap-1 bg-secondary text-secondary-foreground text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase">
+                              <RefreshCw className="w-2.5 h-2.5" /> {expense.recurrenceRule || "Recurring"}
+                            </span>
+                          )}
+                          {expense.receiptUrl && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenReceipt(expense)}
+                              className="inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 text-primary px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors"
+                              title="Click to view attached receipt"
+                            >
+                              <Paperclip className="w-3 h-3" />
+                              <span>Receipt</span>
+                            </button>
+                          )}
+                        </div>
                         <div className="flex items-center text-sm text-muted-foreground mt-0.5 space-x-2">
                           <span>{expense.description || "No description"}</span>
                           {expense.paymentMethod && (
@@ -165,6 +208,17 @@ export default function ExpensesPage() {
                         ₹{expense.amount.toLocaleString()}
                       </span>
                       <div className="flex items-center space-x-1">
+                        {expense.receiptUrl && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-primary hover:text-primary/80"
+                            onClick={() => handleOpenReceipt(expense)}
+                            title="Inspect Receipt"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"

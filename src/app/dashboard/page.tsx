@@ -4,13 +4,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
-import { Sparkles, Calendar as CalendarIcon, Target, TrendingUp, IndianRupee, Wallet, CheckCircle2, ArrowUpRight, ArrowDownRight, Plus, Loader2, Receipt, ArrowDownToLine, ArrowUpFromLine, Pencil, Trash2 } from "lucide-react"
+import { Sparkles, Calendar as CalendarIcon, Target, TrendingUp, IndianRupee, Wallet, CheckCircle2, ArrowUpRight, ArrowDownRight, Plus, Loader2, Receipt, ArrowDownToLine, ArrowUpFromLine, Pencil, Trash2, Paperclip, RefreshCw, Eye } from "lucide-react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal"
 import { AddIncomeModal } from "@/components/incomes/AddIncomeModal"
 import { EditExpenseModal } from "@/components/expenses/EditExpenseModal"
 import { EditIncomeModal } from "@/components/incomes/EditIncomeModal"
+import { ReceiptModal } from "@/components/expenses/ReceiptModal"
+import { RecurringBillsCard } from "@/components/recurring/RecurringBillsCard"
 import { useLanguage } from "@/components/providers/LanguageProvider"
 import { useState, useEffect } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts"
@@ -28,6 +30,8 @@ export default function DashboardPage() {
   const [editingIncome, setEditingIncome] = useState<any>(null)
   const [editIncomeOpen, setEditIncomeOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false)
+  const [selectedReceipt, setSelectedReceipt] = useState<{ url: string; title: string; subtitle?: string } | null>(null)
   const [expenses, setExpenses] = useState<any[]>([])
   const [budgets, setBudgets] = useState<any[]>([])
   const [incomes, setIncomes] = useState<any[]>([])
@@ -270,6 +274,18 @@ export default function DashboardPage() {
     }
   }
 
+  const handleOpenReceipt = (e: React.MouseEvent, item: any) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!item.raw?.receiptUrl) return
+    setSelectedReceipt({
+      url: item.raw.receiptUrl,
+      title: `${item.category} Receipt`,
+      subtitle: item.subtitle || new Date(item.date).toLocaleDateString()
+    })
+    setReceiptModalOpen(true)
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both">
       <AddExpenseModal 
@@ -290,6 +306,14 @@ export default function DashboardPage() {
         open={editIncomeOpen}
         onOpenChange={setEditIncomeOpen}
         onSuccess={fetchData}
+      />
+
+      <ReceiptModal
+        open={receiptModalOpen}
+        onOpenChange={setReceiptModalOpen}
+        receiptUrl={selectedReceipt?.url || null}
+        title={selectedReceipt?.title}
+        subtitle={selectedReceipt?.subtitle}
       />
 
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -353,7 +377,7 @@ export default function DashboardPage() {
         />
       </div>
 
-
+      <RecurringBillsCard onProcessed={fetchData} />
 
       <div className="grid gap-6 md:grid-cols-7 lg:grid-cols-8">
         
@@ -399,7 +423,19 @@ export default function DashboardPage() {
                         {item.isIncome ? <ArrowDownToLine className="h-6 w-6" /> : <Receipt className="h-6 w-6" />}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
+                          {!item.isIncome && item.raw?.isRecurring && (
+                            <span className="inline-flex items-center gap-0.5 text-[9px] uppercase px-1.5 py-0.5 rounded bg-secondary font-semibold text-secondary-foreground shrink-0">
+                              <RefreshCw className="w-2.5 h-2.5" /> Recurring
+                            </span>
+                          )}
+                          {!item.isIncome && item.raw?.receiptUrl && (
+                            <span className="inline-flex items-center gap-0.5 text-[9px] uppercase px-1.5 py-0.5 rounded bg-primary/10 font-semibold text-primary shrink-0">
+                              <Paperclip className="w-2.5 h-2.5" /> Receipt
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>
                       </div>
                     </Link>
@@ -414,6 +450,17 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-1 pl-2 border-l border-border/50">
+                        {!item.isIncome && item.raw?.receiptUrl && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-primary hover:text-primary/80"
+                            onClick={(e) => handleOpenReceipt(e, item)}
+                            title="Inspect Receipt"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
