@@ -49,7 +49,12 @@ export function Sidebar() {
           <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold text-xl shadow-sm">
             B
           </div>
-          {!isCollapsed && <span className="font-bold text-xl text-sidebar-foreground tracking-tight whitespace-nowrap">BillBrain</span>}
+          {!isCollapsed && (
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-xl text-sidebar-foreground tracking-tight whitespace-nowrap">BillBrain</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">v2.1</span>
+            </div>
+          )}
         </Link>
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}

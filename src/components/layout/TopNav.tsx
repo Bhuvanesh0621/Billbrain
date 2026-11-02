@@ -43,10 +43,13 @@ export function TopNav() {
 
   return (
     <header className="h-16 bg-background/80 backdrop-blur-md border-b border-border flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30 transition-colors">
-      <div className="flex items-center flex-1">
-        <Button variant="ghost" size="icon" className="md:hidden mr-2">
-          <Menu className="h-5 w-5" />
-        </Button>
+      <div className="flex items-center flex-1 gap-2">
+        <div className="flex items-center gap-1.5 md:hidden">
+          <span className="font-bold text-base text-foreground tracking-tight">BillBrain</span>
+        </div>
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+          v2.1 Latest
+        </span>
         <div className="max-w-md w-full hidden sm:flex relative">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input 
