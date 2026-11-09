@@ -11,6 +11,7 @@ import { AddExpenseModal } from "@/components/expenses/AddExpenseModal"
 import { AddIncomeModal } from "@/components/incomes/AddIncomeModal"
 import { EditExpenseModal } from "@/components/expenses/EditExpenseModal"
 import { EditIncomeModal } from "@/components/incomes/EditIncomeModal"
+import { IncomeSourcesModal } from "@/components/incomes/IncomeSourcesModal"
 import { ReceiptModal } from "@/components/expenses/ReceiptModal"
 import { RecurringBillsCard } from "@/components/recurring/RecurringBillsCard"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
@@ -27,6 +28,7 @@ export default function DashboardPage() {
   const { t } = useLanguage()
   const [expenseModalOpen, setExpenseModalOpen] = useState(false)
   const [incomeModalOpen, setIncomeModalOpen] = useState(false)
+  const [incomeSourcesModalOpen, setIncomeSourcesModalOpen] = useState(false)
   const [editingExpense, setEditingExpense] = useState<any>(null)
   const [editExpenseOpen, setEditExpenseOpen] = useState(false)
   const [editingIncome, setEditingIncome] = useState<any>(null)
@@ -321,6 +323,28 @@ export default function DashboardPage() {
         onSuccess={fetchData}
       />
 
+      <IncomeSourcesModal 
+        open={incomeSourcesModalOpen}
+        onOpenChange={setIncomeSourcesModalOpen}
+        incomes={currentMonthIncomes}
+        allIncomes={incomes}
+        totalIncome={totalIncomeThisMonth}
+        onAddIncome={() => {
+          setIncomeSourcesModalOpen(false)
+          setIncomeModalOpen(true)
+        }}
+        onEditIncome={(item) => {
+          setIncomeSourcesModalOpen(false)
+          setEditingIncome(item)
+          setEditIncomeOpen(true)
+        }}
+        onDeleteIncome={(item) => {
+          setIncomeSourcesModalOpen(false)
+          setItemToDelete(item)
+          setDeleteConfirmOpen(true)
+        }}
+      />
+
       <ReceiptModal
         open={receiptModalOpen}
         onOpenChange={setReceiptModalOpen}
@@ -375,6 +399,8 @@ export default function DashboardPage() {
           trend={`${currentMonthIncomes.length} sources`}
           trendUp={false}
           icon={TrendingUp} 
+          trendClickable={true}
+          onTrendClick={() => setIncomeSourcesModalOpen(true)}
         />
         <MetricCard 
           title="Spent (This Month)"
@@ -573,7 +599,7 @@ export default function DashboardPage() {
   )
 }
 
-function MetricCard({ title, amount, trend, icon: Icon, trendUp, progressValue }: any) {
+function MetricCard({ title, amount, trend, icon: Icon, trendUp, progressValue, trendClickable, onTrendClick }: any) {
   return (
     <Card className="relative overflow-hidden glass-card group flex flex-col p-1">
       <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/5 blur-3xl group-hover:bg-primary/15 transition-all duration-700 ease-in-out" />
@@ -585,13 +611,28 @@ function MetricCard({ title, amount, trend, icon: Icon, trendUp, progressValue }
       </CardHeader>
       <CardContent className="relative z-10 flex flex-col">
         <div className="text-3xl font-extrabold tracking-tighter text-foreground drop-shadow-sm">{amount}</div>
-        <p className="text-xs text-muted-foreground mt-2 flex items-center font-medium">
-          {trendUp === true && <ArrowUpRight className="w-3.5 h-3.5 mr-1 text-destructive stroke-[3]" />}
-          {trendUp === false && <ArrowDownRight className="w-3.5 h-3.5 mr-1 text-emerald-500 stroke-[3]" />}
-          <span className={trendUp === true ? "text-destructive" : trendUp === false ? "text-emerald-500" : ""}>
-            {trend}
-          </span>
-        </p>
+        {trendClickable ? (
+          <button
+            type="button"
+            onClick={onTrendClick}
+            className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 mt-2 flex items-center font-bold transition-all bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-full border border-emerald-500/25 w-fit cursor-pointer shadow-2xs group/btn"
+            title="Click to view and analyse income sources"
+          >
+            <ArrowDownRight className="w-3.5 h-3.5 mr-1 text-emerald-500 stroke-[3]" />
+            <span>{trend}</span>
+            <span className="text-[10px] ml-1 opacity-80 group-hover/btn:opacity-100 font-semibold underline underline-offset-2">
+              (View Sources ↗)
+            </span>
+          </button>
+        ) : (
+          <p className="text-xs text-muted-foreground mt-2 flex items-center font-medium">
+            {trendUp === true && <ArrowUpRight className="w-3.5 h-3.5 mr-1 text-destructive stroke-[3]" />}
+            {trendUp === false && <ArrowDownRight className="w-3.5 h-3.5 mr-1 text-emerald-500 stroke-[3]" />}
+            <span className={trendUp === true ? "text-destructive" : trendUp === false ? "text-emerald-500" : ""}>
+              {trend}
+            </span>
+          </p>
+        )}
         {progressValue !== undefined && (
           <div className="w-full h-2 bg-muted/50 rounded-full mt-5 overflow-hidden shadow-inner border border-black/5 dark:border-white/5">
             <div 
