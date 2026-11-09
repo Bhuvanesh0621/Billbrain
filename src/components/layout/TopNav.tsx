@@ -41,7 +41,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useLanguage } from "@/components/providers/LanguageProvider"
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal"
 
@@ -58,11 +58,23 @@ const NAV_ITEMS = [
 export function TopNav() {
   const { data: session } = useSession()
   const pathname = usePathname()
+  const router = useRouter()
   const { theme, setTheme } = useTheme()
   const { language, setLanguage } = useLanguage()
   const [insights, setInsights] = useState<any[]>([])
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [expenseModalOpen, setExpenseModalOpen] = useState(false)
+  const [topSearchQuery, setTopSearchQuery] = useState("")
+
+  const handleTopSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    const trimmed = topSearchQuery.trim()
+    if (trimmed) {
+      router.push(`/dashboard/search?q=${encodeURIComponent(trimmed)}`)
+    } else {
+      router.push(`/dashboard/search`)
+    }
+  }
 
   useEffect(() => {
     async function fetchInsights() {
@@ -173,16 +185,36 @@ export function TopNav() {
             </span>
           </div>
 
-          <div className="max-w-md w-full hidden sm:flex relative ml-2">
-            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <form onSubmit={handleTopSearch} className="max-w-md w-full hidden sm:flex relative ml-2">
+            <button 
+              type="submit" 
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+              title="Search"
+            >
+              <Search className="h-4 w-4" />
+            </button>
             <Input 
-              placeholder={language === 'ta' ? "பில்கள், தொகையைத் தேடு..." : "Search bills, providers, amounts..."}
+              value={topSearchQuery}
+              onChange={(e) => setTopSearchQuery(e.target.value)}
+              placeholder={language === 'ta' ? "பில்கள், தொகையைத் தேடு (எ.கா. 500, Petrol)..." : "Search bills, notes, amounts (e.g. 500, Petrol)..."}
               className="pl-10 bg-muted/50 border-transparent focus-visible:ring-primary focus-visible:bg-background transition-all h-9 text-xs sm:text-sm"
             />
-          </div>
+          </form>
         </div>
 
         <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0">
+          {/* Quick Search Button on Mobile */}
+          <Link href="/dashboard/search" className="sm:hidden">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 text-foreground hover:bg-muted rounded-full"
+              title="Smart Search"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+          </Link>
+
           {/* Quick Add Expense button for Mobile Headers */}
           <Button 
             size="sm" 
