@@ -327,7 +327,6 @@ export default function DashboardPage() {
         open={incomeSourcesModalOpen}
         onOpenChange={setIncomeSourcesModalOpen}
         incomes={currentMonthIncomes}
-        allIncomes={incomes}
         totalIncome={totalIncomeThisMonth}
         onAddIncome={() => {
           setIncomeSourcesModalOpen(false)
