@@ -139,13 +139,13 @@ export default function ExpensesPage() {
         onConfirm={executeDeleteExpense}
       />
 
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Expense Timeline</h1>
-          <p className="text-muted-foreground mt-1 text-lg">Track, inspect receipts, and manage recurring payments.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Expense Timeline</h1>
+          <p className="text-muted-foreground mt-0.5 sm:mt-1 text-sm sm:text-base">Track, inspect receipts, and manage recurring payments.</p>
         </div>
-        <Button onClick={() => setExpenseModalOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm shrink-0">
-          <Plus className="w-4 h-4 mr-2" /> Track Expense
+        <Button onClick={() => setExpenseModalOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm shrink-0 h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold rounded-lg w-full sm:w-auto">
+          <Plus className="w-4 h-4 mr-1.5" /> Track Expense
         </Button>
       </div>
 

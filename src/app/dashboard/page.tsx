@@ -346,17 +346,17 @@ export default function DashboardPage() {
           </h1>
           <p className="text-muted-foreground mt-1 text-lg">{t("how_money_moving")}</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full md:w-auto">
           <AddIncomeModal 
             open={incomeModalOpen} 
             onOpenChange={setIncomeModalOpen}
             onSuccess={fetchData} 
           />
-          <Button onClick={() => setExpenseModalOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hidden md:flex">
-            <Plus className="w-4 h-4 mr-2" /> Add Expense
+          <Button onClick={() => setExpenseModalOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm flex items-center justify-center flex-1 sm:flex-initial h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold rounded-lg shrink-0">
+            <Plus className="w-4 h-4 mr-1.5" /> Add Expense
           </Button>
-          <Button onClick={() => setIncomeModalOpen(true)} variant="outline" className="border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 hidden md:flex">
-            <Plus className="w-4 h-4 mr-2" /> Add Income
+          <Button onClick={() => setIncomeModalOpen(true)} variant="outline" className="border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 flex items-center justify-center flex-1 sm:flex-initial h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold rounded-lg shrink-0">
+            <Plus className="w-4 h-4 mr-1.5" /> Add Income
           </Button>
           <Button onClick={exportToPDF} variant="outline" className="border-primary/30 text-primary hover:bg-primary/10 hidden md:flex">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
