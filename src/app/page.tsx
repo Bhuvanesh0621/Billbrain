@@ -1,7 +1,15 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/lib/auth"
+import { redirect } from "next/navigation"
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const session = await getServerSession(authOptions)
+  if (session?.user) {
+    redirect("/dashboard")
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <header className="py-6 px-8 max-w-7xl mx-auto w-full flex justify-between items-center border-b border-slate-100">

@@ -10,25 +10,35 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 })
     }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
+    const normalizedEmail = email.trim().toLowerCase()
+
+    const existingUser = await prisma.user.findFirst({
+      where: { 
+        email: {
+          equals: normalizedEmail,
+          mode: 'insensitive'
+        }
+      }
     })
 
     if (existingUser) {
-      return NextResponse.json({ message: "User already exists" }, { status: 400 })
+      return NextResponse.json({ message: "User already exists with this email" }, { status: 400 })
     }
 
     const hashedPassword = await bcrypt.hash(password, 10)
 
     const user = await prisma.user.create({
       data: {
-        name,
-        email,
+        name: name.trim(),
+        email: normalizedEmail,
         password: hashedPassword
       }
     })
 
-    return NextResponse.json({ message: "User created", user: { id: user.id, email: user.email, name: user.name } }, { status: 201 })
+    return NextResponse.json({ 
+      message: "User created", 
+      user: { id: user.id, email: user.email, name: user.name } 
+    }, { status: 201 })
   } catch (error: any) {
     console.error("Registration error:", error)
     const errorMsg = error?.message || "An error occurred during registration"

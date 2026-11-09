@@ -17,8 +17,16 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email }
+        const normalizedEmail = credentials.email.trim().toLowerCase()
+
+        // Case-insensitive user lookup for reliable login
+        const user = await prisma.user.findFirst({
+          where: { 
+            email: { 
+              equals: normalizedEmail,
+              mode: 'insensitive' 
+            } 
+          }
         })
 
         if (!user || !user.password) {
@@ -40,7 +48,12 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   session: {
-    strategy: "jwt"
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // Keep session active for 30 days
+    updateAge: 24 * 60 * 60, // Refresh token age every 24 hours
+  },
+  jwt: {
+    maxAge: 30 * 24 * 60 * 60, // 30 days token validity
   },
   pages: {
     signIn: "/auth/login",
