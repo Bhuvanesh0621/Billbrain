@@ -44,18 +44,36 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 })
 
     const body = await req.json()
+    const { amount, source, date, isRecurring } = body
+
+    if (!amount) {
+      return NextResponse.json({ error: "Amount is required" }, { status: 400 })
+    }
+
+    const parsedAmount = parseFloat(amount)
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      return NextResponse.json({ error: "Income amount must be a positive number" }, { status: 400 })
+    }
+
+    let parsedDate = new Date()
+    if (date) {
+      parsedDate = new Date(date)
+      if (isNaN(parsedDate.getTime())) {
+        return NextResponse.json({ error: "Invalid date format" }, { status: 400 })
+      }
+    }
     
     const income = await prisma.income.create({
       data: {
-        amount: parseFloat(body.amount),
-        source: body.source,
-        date: body.date ? new Date(body.date) : new Date(),
-        isRecurring: body.isRecurring || false,
+        amount: Math.round(parsedAmount * 100) / 100,
+        source: source ? source.trim() : "Manual Entry",
+        date: parsedDate,
+        isRecurring: Boolean(isRecurring),
         userId: user.id
       }
     })
 
-    return NextResponse.json(income)
+    return NextResponse.json(income, { status: 201 })
   } catch (error) {
     console.error("Failed to create income:", error)
     return NextResponse.json({ error: "Failed to create income" }, { status: 500 })

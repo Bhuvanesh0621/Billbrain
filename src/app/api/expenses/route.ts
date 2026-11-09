@@ -70,21 +70,31 @@ export async function POST(req: Request) {
     const { amount, category, description, date, paymentMethod, isRecurring, recurrenceRule, notes, receiptUrl } = body
 
     if (!amount || !category || !date) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+      return NextResponse.json({ error: "Amount, category, and date are required" }, { status: 400 })
+    }
+
+    const parsedAmount = parseFloat(amount)
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      return NextResponse.json({ error: "Amount must be a valid positive number" }, { status: 400 })
+    }
+
+    const parsedDate = new Date(date)
+    if (isNaN(parsedDate.getTime())) {
+      return NextResponse.json({ error: "Invalid date format" }, { status: 400 })
     }
 
     const expense = await prisma.expense.create({
       data: {
         userId: user.id,
-        amount: parseFloat(amount),
-        category,
-        description,
-        date: new Date(date),
-        paymentMethod,
-        isRecurring: isRecurring || false,
+        amount: Math.round(parsedAmount * 100) / 100,
+        category: category.trim(),
+        description: description ? description.trim() : null,
+        date: parsedDate,
+        paymentMethod: paymentMethod ? paymentMethod.trim() : "UPI",
+        isRecurring: Boolean(isRecurring),
         recurrenceRule: recurrenceRule || null,
         receiptUrl: receiptUrl || null,
-        notes
+        notes: notes ? notes.trim() : null
       }
     })
 

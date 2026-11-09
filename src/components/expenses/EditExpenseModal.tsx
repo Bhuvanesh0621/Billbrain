@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2, UploadCloud, X, RefreshCw, Paperclip } from "lucide-react"
 import { compressImageToDataUrl } from "@/lib/imageUtils"
+import { notify } from "@/components/ui/toast"
 
 export interface ExpenseItem {
   id: string
@@ -80,9 +81,10 @@ export function EditExpenseModal({ expense, open, onOpenChange, onSuccess }: Edi
       setCompressing(true)
       const compressed = await compressImageToDataUrl(file)
       setFormData(prev => ({ ...prev, receiptUrl: compressed }))
+      notify.success("Receipt Attached", "Photo compressed and ready to save.")
     } catch (err: any) {
       console.error(err)
-      alert(err.message || "Failed to process receipt image")
+      notify.error("Image Error", err.message || "Failed to process receipt image")
     } finally {
       setCompressing(false)
       if (fileInputRef.current) fileInputRef.current.value = ""
@@ -91,11 +93,16 @@ export function EditExpenseModal({ expense, open, onOpenChange, onSuccess }: Edi
 
   const handleRemoveReceipt = () => {
     setFormData(prev => ({ ...prev, receiptUrl: "" }))
+    notify.info("Receipt Removed", "The attached photo was removed.")
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!expense) return
+    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+      notify.error("Invalid Amount", "Please enter an amount greater than 0.")
+      return
+    }
     setLoading(true)
 
     try {
@@ -106,6 +113,7 @@ export function EditExpenseModal({ expense, open, onOpenChange, onSuccess }: Edi
       })
 
       if (res.ok) {
+        notify.success("Expense Updated", `Saved changes to ${formData.category}`)
         onOpenChange(false)
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("billbrain:refresh"))
@@ -113,11 +121,11 @@ export function EditExpenseModal({ expense, open, onOpenChange, onSuccess }: Edi
         onSuccess?.()
       } else {
         const data = await res.json()
-        alert(data.error || "Failed to update expense")
+        notify.error("Update Failed", data.error || "Failed to update expense")
       }
     } catch (error) {
       console.error("Failed to update expense", error)
-      alert("Failed to update expense due to a network error.")
+      notify.error("Network Error", "Could not connect to server. Please try again.")
     } finally {
       setLoading(false)
     }

@@ -65,14 +65,29 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const body = await req.json()
     const { amount, source, date, isRecurring } = body
 
+    const updateData: any = {}
+
+    if (amount !== undefined) {
+      const parsedAmount = parseFloat(amount)
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        return NextResponse.json({ error: "Income amount must be a positive number" }, { status: 400 })
+      }
+      updateData.amount = Math.round(parsedAmount * 100) / 100
+    }
+
+    if (source !== undefined) updateData.source = source.trim() || "Manual Entry"
+    if (isRecurring !== undefined) updateData.isRecurring = Boolean(isRecurring)
+    if (date !== undefined) {
+      const parsedDate = new Date(date)
+      if (isNaN(parsedDate.getTime())) {
+        return NextResponse.json({ error: "Invalid date format" }, { status: 400 })
+      }
+      updateData.date = parsedDate
+    }
+
     const updatedIncome = await prisma.income.update({
       where: { id },
-      data: {
-        amount: amount !== undefined ? parseFloat(amount) : undefined,
-        source: source !== undefined ? source : undefined,
-        date: date ? new Date(date) : undefined,
-        isRecurring: isRecurring !== undefined ? isRecurring : undefined,
-      }
+      data: updateData
     })
 
     return NextResponse.json(updatedIncome)

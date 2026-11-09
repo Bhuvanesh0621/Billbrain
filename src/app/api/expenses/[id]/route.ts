@@ -65,17 +65,29 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const body = await req.json()
     const { amount, category, description, date, paymentMethod, isRecurring, recurrenceRule, notes, receiptUrl } = body
 
-    const updateData: any = {
-      category,
-      description,
-      paymentMethod,
-      isRecurring: isRecurring !== undefined ? isRecurring : undefined,
-      recurrenceRule: recurrenceRule !== undefined ? recurrenceRule : undefined,
-      notes
+    const updateData: any = {}
+
+    if (amount !== undefined) {
+      const parsedAmount = parseFloat(amount)
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        return NextResponse.json({ error: "Amount must be a positive number" }, { status: 400 })
+      }
+      updateData.amount = Math.round(parsedAmount * 100) / 100
     }
 
-    if (amount !== undefined) updateData.amount = parseFloat(amount)
-    if (date !== undefined) updateData.date = new Date(date)
+    if (category !== undefined) updateData.category = category.trim()
+    if (description !== undefined) updateData.description = description ? description.trim() : null
+    if (paymentMethod !== undefined) updateData.paymentMethod = paymentMethod ? paymentMethod.trim() : "UPI"
+    if (notes !== undefined) updateData.notes = notes ? notes.trim() : null
+    if (isRecurring !== undefined) updateData.isRecurring = Boolean(isRecurring)
+    if (recurrenceRule !== undefined) updateData.recurrenceRule = recurrenceRule || null
+    if (date !== undefined) {
+      const parsedDate = new Date(date)
+      if (isNaN(parsedDate.getTime())) {
+        return NextResponse.json({ error: "Invalid date format" }, { status: 400 })
+      }
+      updateData.date = parsedDate
+    }
     if (receiptUrl !== undefined) updateData.receiptUrl = receiptUrl || null
 
     const updatedExpense = await prisma.expense.update({

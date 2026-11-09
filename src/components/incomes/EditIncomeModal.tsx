@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { IndianRupee, Loader2 } from "lucide-react"
+import { notify } from "@/components/ui/toast"
 
 export interface IncomeItem {
   id: string
@@ -57,6 +58,7 @@ export function EditIncomeModal({
       })
       
       if (res.ok) {
+        notify.success("Income Updated", `Saved changes to ${source || "Income"}`)
         onOpenChange(false)
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("billbrain:refresh"))
@@ -64,11 +66,11 @@ export function EditIncomeModal({
         onSuccess?.()
       } else {
         const data = await res.json()
-        alert(data.error || "Failed to update income")
+        notify.error("Update Failed", data.error || "Failed to update income")
       }
     } catch (error) {
       console.error("Failed to update income", error)
-      alert("Failed to update income due to a network error.")
+      notify.error("Network Error", "Could not connect to server. Please try again.")
     } finally {
       setIsSubmitting(false)
     }

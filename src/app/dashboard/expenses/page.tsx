@@ -10,6 +10,8 @@ import { AddExpenseModal } from "@/components/expenses/AddExpenseModal"
 import { EditExpenseModal } from "@/components/expenses/EditExpenseModal"
 import { ReceiptModal } from "@/components/expenses/ReceiptModal"
 import { RecurringBillsCard } from "@/components/recurring/RecurringBillsCard"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { notify } from "@/components/ui/toast"
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<any[]>([])
@@ -19,6 +21,8 @@ export default function ExpensesPage() {
   const [editingExpense, setEditingExpense] = useState<any>(null)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [expenseToDelete, setExpenseToDelete] = useState<any>(null)
   const [receiptModalOpen, setReceiptModalOpen] = useState(false)
   const [selectedReceipt, setSelectedReceipt] = useState<{ url: string; title: string; subtitle?: string } | null>(null)
 
@@ -62,22 +66,31 @@ export default function ExpensesPage() {
     return groups
   }, {})
 
-  const handleDeleteExpense = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this expense?")) return
-    setDeletingId(id)
+  const confirmDeleteExpense = (expense: any) => {
+    setExpenseToDelete(expense)
+    setDeleteConfirmOpen(true)
+  }
+
+  const executeDeleteExpense = async () => {
+    if (!expenseToDelete) return
+    setDeletingId(expenseToDelete.id)
     try {
-      const res = await fetch(`/api/expenses/${id}`, { method: "DELETE" })
+      const res = await fetch(`/api/expenses/${expenseToDelete.id}`, { method: "DELETE" })
       if (res.ok) {
+        notify.success("Expense Deleted", `Removed ₹${expenseToDelete.amount?.toLocaleString()} from ${expenseToDelete.category}`)
+        setDeleteConfirmOpen(false)
+        setExpenseToDelete(null)
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("billbrain:refresh"))
         }
         fetchExpenses()
       } else {
-        alert("Failed to delete expense")
+        const data = await res.json().catch(() => ({}))
+        notify.error("Delete Failed", data.error || "Could not delete expense.")
       }
     } catch (err) {
       console.error(err)
-      alert("Error deleting expense")
+      notify.error("Network Error", "Could not delete expense. Please try again.")
     } finally {
       setDeletingId(null)
     }
@@ -114,6 +127,16 @@ export default function ExpensesPage() {
         receiptUrl={selectedReceipt?.url || null}
         title={selectedReceipt?.title}
         subtitle={selectedReceipt?.subtitle}
+      />
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title="Delete Expense"
+        description={expenseToDelete ? `Are you sure you want to delete ${expenseToDelete.category} (₹${expenseToDelete.amount?.toLocaleString()})? This cannot be undone.` : "Are you sure you want to delete this expense?"}
+        confirmText="Delete"
+        loading={!!deletingId}
+        onConfirm={executeDeleteExpense}
       />
 
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -235,7 +258,7 @@ export default function ExpensesPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleDeleteExpense(expense.id)}
+                          onClick={() => confirmDeleteExpense(expense)}
                           disabled={deletingId === expense.id}
                           title="Delete Expense"
                         >

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2, UploadCloud, X, RefreshCw, Paperclip, Image as ImageIcon } from "lucide-react"
 import { compressImageToDataUrl } from "@/lib/imageUtils"
+import { notify } from "@/components/ui/toast"
 
 interface AddExpenseModalProps {
   open: boolean
@@ -68,9 +69,10 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
       setCompressing(true)
       const compressed = await compressImageToDataUrl(file)
       setFormData(prev => ({ ...prev, receiptUrl: compressed }))
+      notify.success("Receipt Attached", "Photo compressed and ready to save.")
     } catch (err: any) {
       console.error(err)
-      alert(err.message || "Failed to process receipt image")
+      notify.error("Image Error", err.message || "Failed to process receipt image")
     } finally {
       setCompressing(false)
       if (fileInputRef.current) fileInputRef.current.value = ""
@@ -79,10 +81,15 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
 
   const handleRemoveReceipt = () => {
     setFormData(prev => ({ ...prev, receiptUrl: "" }))
+    notify.info("Receipt Removed", "The attached photo was removed.")
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+      notify.error("Invalid Amount", "Please enter an amount greater than 0.")
+      return
+    }
     setLoading(true)
 
     try {
@@ -93,6 +100,7 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
       })
 
       if (res.ok) {
+        notify.success("Expense Added", `₹${parseFloat(formData.amount).toLocaleString()} added to ${formData.category}`)
         onOpenChange(false)
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("billbrain:refresh"))
@@ -101,11 +109,11 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
         router.refresh()
       } else {
         const data = await res.json()
-        alert(data.error || "Failed to add expense")
+        notify.error("Failed to Add Expense", data.error || "Please try again.")
       }
     } catch (error) {
       console.error("Failed to add expense", error)
-      alert("Failed to add expense due to a network error.")
+      notify.error("Network Error", "Could not connect to server. Please try again.")
     } finally {
       setLoading(false)
     }

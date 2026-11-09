@@ -217,6 +217,12 @@ function Toaster({
 const createToastManager = ToastPrimitive.createToastManager
 const useToastManager = ToastPrimitive.useToastManager
 
+export const notify = {
+  success: (title: string, description?: string) => toast.add({ title, description, type: "success" }),
+  error: (title: string, description?: string) => toast.add({ title, description, type: "error" }),
+  info: (title: string, description?: string) => toast.add({ title, description, type: "info" }),
+}
+
 export {
   Toaster,
   Toast,

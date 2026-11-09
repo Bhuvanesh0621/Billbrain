@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { IndianRupee, Loader2 } from "lucide-react"
+import { notify } from "@/components/ui/toast"
 
 export function AddIncomeModal({ 
   open, 
@@ -20,7 +21,10 @@ export function AddIncomeModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!amount || isNaN(Number(amount))) return
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+      notify.error("Invalid Amount", "Please enter a positive income amount.")
+      return
+    }
     
     setIsSubmitting(true)
     try {
@@ -29,11 +33,12 @@ export function AddIncomeModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           amount: Number(amount), 
-          source: source || "Manual Entry" 
+          source: source.trim() || "Manual Entry" 
         })
       })
       
       if (res.ok) {
+        notify.success("Income Recorded", `+₹${Number(amount).toLocaleString()} from ${source || "Manual Entry"}`)
         setAmount("")
         setSource("")
         onOpenChange(false) // Close modal
@@ -41,9 +46,13 @@ export function AddIncomeModal({
           window.dispatchEvent(new CustomEvent("billbrain:refresh"))
         }
         onSuccess?.()
+      } else {
+        const data = await res.json()
+        notify.error("Failed to Add Income", data.error || "Please try again.")
       }
     } catch (error) {
       console.error("Failed to add income", error)
+      notify.error("Network Error", "Could not record income. Please try again.")
     } finally {
       setIsSubmitting(false)
     }

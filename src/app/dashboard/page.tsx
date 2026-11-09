@@ -13,6 +13,8 @@ import { EditExpenseModal } from "@/components/expenses/EditExpenseModal"
 import { EditIncomeModal } from "@/components/incomes/EditIncomeModal"
 import { ReceiptModal } from "@/components/expenses/ReceiptModal"
 import { RecurringBillsCard } from "@/components/recurring/RecurringBillsCard"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { notify } from "@/components/ui/toast"
 import { useLanguage } from "@/components/providers/LanguageProvider"
 import { useState, useEffect } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts"
@@ -30,6 +32,8 @@ export default function DashboardPage() {
   const [editingIncome, setEditingIncome] = useState<any>(null)
   const [editIncomeOpen, setEditIncomeOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [itemToDelete, setItemToDelete] = useState<any>(null)
   const [receiptModalOpen, setReceiptModalOpen] = useState(false)
   const [selectedReceipt, setSelectedReceipt] = useState<{ url: string; title: string; subtitle?: string } | null>(null)
   const [expenses, setExpenses] = useState<any[]>([])
@@ -236,27 +240,36 @@ export default function DashboardPage() {
   if (currentHour < 12) greetingKey = "good_morning"
   else if (currentHour < 17) greetingKey = "good_afternoon"
 
-  const handleDeleteTransaction = async (e: React.MouseEvent, item: any) => {
+  const confirmDeleteTransaction = (e: React.MouseEvent, item: any) => {
     e.preventDefault()
     e.stopPropagation()
-    const itemType = item.isIncome ? "income" : "expense"
-    if (!confirm(`Are you sure you want to delete this ${itemType}?`)) return
+    setItemToDelete(item)
+    setDeleteConfirmOpen(true)
+  }
 
-    setDeletingId(item.id)
+  const executeDeleteTransaction = async () => {
+    if (!itemToDelete) return
+    const itemType = itemToDelete.isIncome ? "income" : "expense"
+    setDeletingId(itemToDelete.id)
+
     try {
-      const endpoint = item.isIncome ? `/api/incomes/${item.rawId}` : `/api/expenses/${item.rawId}`
+      const endpoint = itemToDelete.isIncome ? `/api/incomes/${itemToDelete.rawId}` : `/api/expenses/${itemToDelete.rawId}`
       const res = await fetch(endpoint, { method: "DELETE" })
       if (res.ok) {
+        notify.success(`${itemToDelete.isIncome ? "Income" : "Expense"} Deleted`, `Removed ₹${itemToDelete.amount?.toLocaleString()} from ${itemToDelete.category}`)
+        setDeleteConfirmOpen(false)
+        setItemToDelete(null)
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("billbrain:refresh"))
         }
         fetchData()
       } else {
-        alert(`Failed to delete ${itemType}`)
+        const data = await res.json().catch(() => ({}))
+        notify.error("Delete Failed", data.error || `Could not delete ${itemType}.`)
       }
     } catch (err) {
       console.error(err)
-      alert(`Error deleting ${itemType}`)
+      notify.error("Network Error", `Could not delete ${itemType}. Please try again.`)
     } finally {
       setDeletingId(null)
     }
@@ -314,6 +327,16 @@ export default function DashboardPage() {
         receiptUrl={selectedReceipt?.url || null}
         title={selectedReceipt?.title}
         subtitle={selectedReceipt?.subtitle}
+      />
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title={`Delete ${itemToDelete?.isIncome ? "Income" : "Expense"}`}
+        description={itemToDelete ? `Are you sure you want to delete this ${itemToDelete.isIncome ? "income" : "expense"} of ₹${itemToDelete.amount?.toLocaleString()} (${itemToDelete.category})? This cannot be undone.` : "Are you sure you want to delete this item?"}
+        confirmText="Delete"
+        loading={!!deletingId}
+        onConfirm={executeDeleteTransaction}
       />
 
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -474,7 +497,7 @@ export default function DashboardPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          onClick={(e) => handleDeleteTransaction(e, item)}
+                          onClick={(e) => confirmDeleteTransaction(e, item)}
                           disabled={deletingId === item.id}
                           title={item.isIncome ? "Delete Income" : "Delete Expense"}
                         >
