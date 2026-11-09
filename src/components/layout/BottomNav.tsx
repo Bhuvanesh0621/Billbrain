@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, PieChart, Sparkles, Settings, Plus } from "lucide-react"
+import { Home, PieChart, Search, Settings, Plus } from "lucide-react"
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal"
 
 export function BottomNav() {
@@ -16,7 +16,7 @@ export function BottomNav() {
   ]
 
   const rightNav = [
-    { href: "/dashboard/ai", icon: Sparkles, label: "AI" },
+    { href: "/dashboard/search", icon: Search, label: "Search" },
     { href: "/dashboard/settings", icon: Settings, label: "Settings" },
   ]
 
@@ -61,7 +61,7 @@ export function BottomNav() {
 
           {/* Right items */}
           {rightNav.map((item) => {
-            const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(`${item.href}`))
+            const isActive = pathname === item.href
             const Icon = item.icon
             return (
               <Link 

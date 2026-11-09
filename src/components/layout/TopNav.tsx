@@ -233,13 +233,6 @@ export function TopNav() {
           >
             {language === 'ta' ? 'English' : 'தமிழ்'}
           </Button>
-
-          <Link href="/dashboard/ai" className="hidden sm:flex">
-            <Button variant="outline" size="sm" className="border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-900/50 dark:bg-indigo-900/20 dark:text-indigo-300 dark:hover:bg-indigo-900/40 h-8 text-xs">
-              <Sparkles className="h-3.5 w-3.5 mr-1.5 text-indigo-500" />
-              {language === 'ta' ? 'AI உதவியாளர்' : 'Ask BillBrain'}
-            </Button>
-          </Link>
           
           <Button 
             variant="ghost" 
@@ -298,8 +291,8 @@ export function TopNav() {
                 )}
               </div>
               <div className="p-2 border-t border-border/50">
-                <Link href="/dashboard/ai" className={buttonVariants({ variant: "ghost", size: "sm", className: "w-full text-xs text-primary" })}>
-                  View in AI Assistant
+                <Link href="/dashboard/analytics" className={buttonVariants({ variant: "ghost", size: "sm", className: "w-full text-xs text-primary" })}>
+                  View All Analytics
                 </Link>
               </div>
             </DropdownMenuContent>
