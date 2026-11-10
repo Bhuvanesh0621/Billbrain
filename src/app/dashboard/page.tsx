@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
-import { Sparkles, Calendar as CalendarIcon, Target, TrendingUp, IndianRupee, Wallet, CheckCircle2, ArrowUpRight, ArrowDownRight, Plus, Loader2, Receipt, ArrowDownToLine, ArrowUpFromLine, Pencil, Trash2, Paperclip, RefreshCw, Eye } from "lucide-react"
+import { Sparkles, Calendar as CalendarIcon, Target, TrendingUp, IndianRupee, Wallet, CheckCircle2, ArrowUpRight, ArrowDownRight, Plus, Loader2, Receipt, ArrowDownToLine, ArrowUpFromLine, Pencil, Trash2, Paperclip, RefreshCw, Eye, Mic } from "lucide-react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal"
@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const { data: session } = useSession()
   const { t } = useLanguage()
   const [expenseModalOpen, setExpenseModalOpen] = useState(false)
+  const [autoStartVoice, setAutoStartVoice] = useState(false)
   const [incomeModalOpen, setIncomeModalOpen] = useState(false)
   const [incomeSourcesModalOpen, setIncomeSourcesModalOpen] = useState(false)
   const [editingExpense, setEditingExpense] = useState<any>(null)
@@ -305,7 +306,11 @@ export default function DashboardPage() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both">
       <AddExpenseModal 
         open={expenseModalOpen} 
-        onOpenChange={setExpenseModalOpen}
+        onOpenChange={(isOpen) => {
+          setExpenseModalOpen(isOpen)
+          if (!isOpen) setAutoStartVoice(false)
+        }}
+        autoStartVoice={autoStartVoice}
         onSuccess={fetchData} 
       />
 
@@ -375,6 +380,17 @@ export default function DashboardPage() {
             onOpenChange={setIncomeModalOpen}
             onSuccess={fetchData} 
           />
+          <Button 
+            onClick={() => {
+              setAutoStartVoice(true)
+              setExpenseModalOpen(true)
+            }} 
+            variant="outline"
+            className="border-indigo-500/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 flex items-center justify-center flex-1 sm:flex-initial h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold rounded-lg shrink-0 shadow-2xs"
+            title="Speak to note expense with Voice Assistant"
+          >
+            <Mic className="w-4 h-4 mr-1.5 text-indigo-600 dark:text-indigo-400" /> Voice Note
+          </Button>
           <Button onClick={() => setExpenseModalOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm flex items-center justify-center flex-1 sm:flex-initial h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold rounded-lg shrink-0">
             <Plus className="w-4 h-4 mr-1.5" /> Add Expense
           </Button>

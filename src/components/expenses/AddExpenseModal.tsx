@@ -1,12 +1,26 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, UploadCloud, X, RefreshCw, Paperclip, Sparkles, Check, Wand2 } from "lucide-react"
+import { 
+  Loader2, 
+  UploadCloud, 
+  X, 
+  RefreshCw, 
+  Paperclip, 
+  Sparkles, 
+  Check, 
+  Mic, 
+  MicOff, 
+  RotateCcw, 
+  CheckCircle2, 
+  ArrowRight,
+  Volume2
+} from "lucide-react"
 import { compressImageToDataUrl } from "@/lib/imageUtils"
 import { notify } from "@/components/ui/toast"
 
@@ -14,6 +28,7 @@ interface AddExpenseModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess?: () => void
+  autoStartVoice?: boolean
 }
 
 const CATEGORIES = [
@@ -35,7 +50,7 @@ const QUICK_EXAMPLES = [
   "Mobile recharge 299 UPI"
 ]
 
-function parseNaturalExpense(input: string) {
+function parseNaturalExpense(input: string, userCategories: string[] = []) {
   if (!input.trim()) return null
 
   let text = input.trim()
@@ -45,7 +60,7 @@ function parseNaturalExpense(input: string) {
   let detectedDate = ""
 
   // 1. Amount detection: look for numbers like "₹500", "500", "500.50", "rs 500", "500rs", "2,500"
-  const amountMatch = text.match(/(?:₹|rs\.?|inr)?\s*(\d+(?:,\d+)*(?:\.\d+)?)(?:\s*(?:rs|inr|\/-))?/i)
+  const amountMatch = text.match(/(?:₹|rs\.?|inr|rupees?)?\s*(\d+(?:,\d+)*(?:\.\d+)?)(?:\s*(?:rs|inr|rupees?|\/-))?/i)
   if (amountMatch) {
     const rawNum = amountMatch[1].replace(/,/g, "")
     const num = parseFloat(rawNum)
@@ -65,34 +80,47 @@ function parseNaturalExpense(input: string) {
     detectedPaymentMethod = "Net Banking"
   }
 
-  // 3. Category detection
   const lower = text.toLowerCase()
-  if (/(petrol|fuel|diesel|gasoline|cng)/i.test(lower)) {
-    detectedCategory = "Petrol"
-  } else if (/(food|lunch|dinner|breakfast|biryani|pizza|burger|snack|snacks|tea|chai|coffee|restaurant|hotel|swiggy|zomato|cafe|dosa|idli|meals)/i.test(lower)) {
-    detectedCategory = "Food"
-  } else if (/(groceries|grocery|vegetable|vegetables|fruits|milk|dmart|d-mart|supermarket|rice|provision|kirana)/i.test(lower)) {
-    detectedCategory = "Groceries"
-  } else if (/(shopping|dress|clothes|shirt|pant|shoes|amazon|flipkart|myntra|zara|h&m)/i.test(lower)) {
-    detectedCategory = "Shopping"
-  } else if (/(electricity|eb\s*bill|current\s*bill|tneb|power)/i.test(lower)) {
-    detectedCategory = "Electricity"
-  } else if (/(internet|wifi|broadband|fiber|act|airtel\s*fiber|jio\s*fiber)/i.test(lower)) {
-    detectedCategory = "Internet"
-  } else if (/(mobile|recharge|jio|airtel|vi|phone\s*bill)/i.test(lower)) {
-    detectedCategory = "Mobile"
-  } else if (/(insurance|lic|health\s*insurance|term\s*insurance)/i.test(lower)) {
-    detectedCategory = "Insurance"
-  } else if (/(emi|loan|mortgage|credit\s*card\s*bill)/i.test(lower)) {
-    detectedCategory = "EMI / Loans"
-  } else if (/(education|school|college|fees|tuition|books|stationery|course|exam)/i.test(lower)) {
-    detectedCategory = "Education"
-  } else if (/(healthcare|hospital|medicine|medical|doctor|pharmacy|clinic|tablets|apollo)/i.test(lower)) {
-    detectedCategory = "Healthcare"
-  } else if (/(travel|trip|flight|train|irctc|bus|cab|taxi|uber|ola|auto|flight|toll|fastag)/i.test(lower)) {
-    detectedCategory = "Travel"
-  } else if (/(movie|cinema|theatre|film|netflix|prime|hotstar|popcorn)/i.test(lower)) {
-    detectedCategory = "Personal"
+
+  // 3. User usage adaptive category matching: check user's saved/frequent categories first
+  if (userCategories && userCategories.length > 0) {
+    for (const customCat of userCategories) {
+      if (customCat && new RegExp(`\\b${customCat.toLowerCase()}\\b`, "i").test(lower)) {
+        detectedCategory = customCat
+        break
+      }
+    }
+  }
+
+  // Fallback to built-in category keywords
+  if (!detectedCategory) {
+    if (/(petrol|fuel|diesel|gasoline|cng)/i.test(lower)) {
+      detectedCategory = "Petrol"
+    } else if (/(food|lunch|dinner|breakfast|biryani|pizza|burger|snack|snacks|tea|chai|coffee|restaurant|hotel|swiggy|zomato|cafe|dosa|idli|meals)/i.test(lower)) {
+      detectedCategory = "Food"
+    } else if (/(groceries|grocery|vegetable|vegetables|fruits|milk|dmart|d-mart|supermarket|rice|provision|kirana)/i.test(lower)) {
+      detectedCategory = "Groceries"
+    } else if (/(shopping|dress|clothes|shirt|pant|shoes|amazon|flipkart|myntra|zara|h&m)/i.test(lower)) {
+      detectedCategory = "Shopping"
+    } else if (/(electricity|eb\s*bill|current\s*bill|tneb|power)/i.test(lower)) {
+      detectedCategory = "Electricity"
+    } else if (/(internet|wifi|broadband|fiber|act|airtel\s*fiber|jio\s*fiber)/i.test(lower)) {
+      detectedCategory = "Internet"
+    } else if (/(mobile|recharge|jio|airtel|vi|phone\s*bill)/i.test(lower)) {
+      detectedCategory = "Mobile"
+    } else if (/(insurance|lic|health\s*insurance|term\s*insurance)/i.test(lower)) {
+      detectedCategory = "Insurance"
+    } else if (/(emi|loan|mortgage|credit\s*card\s*bill)/i.test(lower)) {
+      detectedCategory = "EMI / Loans"
+    } else if (/(education|school|college|fees|tuition|books|stationery|course|exam)/i.test(lower)) {
+      detectedCategory = "Education"
+    } else if (/(healthcare|hospital|medicine|medical|doctor|pharmacy|clinic|tablets|apollo)/i.test(lower)) {
+      detectedCategory = "Healthcare"
+    } else if (/(travel|trip|flight|train|irctc|bus|cab|taxi|uber|ola|auto|flight|toll|fastag)/i.test(lower)) {
+      detectedCategory = "Travel"
+    } else if (/(movie|cinema|theatre|film|netflix|prime|hotstar|popcorn)/i.test(lower)) {
+      detectedCategory = "Personal"
+    }
   }
 
   // 4. Date detection: "yesterday", "today"
@@ -106,9 +134,9 @@ function parseNaturalExpense(input: string) {
 
   // 5. Clean Description: remove numbers, payment words, "yesterday/today", "for", "via", "at", "paid"
   let cleanDesc = text
-    .replace(/(?:₹|rs\.?|inr)?\s*\d+(?:,\d+)*(?:\.\d+)?(?:\s*(?:rs|inr|\/-))?/gi, "")
+    .replace(/(?:₹|rs\.?|inr|rupees?)?\s*\d+(?:,\d+)*(?:\.\d+)?(?:\s*(?:rs|inr|rupees?|\/-))?/gi, "")
     .replace(/\b(upi|gpay|google\s*pay|phonepe|paytm|bhim|cash|card|credit\s*card|debit\s*card|net\s*banking|netbanking)\b/gi, "")
-    .replace(/\b(yesterday|today|paid|spend|spent|bought|buy|via|using|through|by|with|for|at)\b/gi, "")
+    .replace(/\b(yesterday|today|paid|spend|spent|bought|buy|via|using|through|by|with|for|at|rupees|rupee)\b/gi, "")
     .replace(/\s+/g, " ")
     .trim()
 
@@ -126,7 +154,7 @@ function parseNaturalExpense(input: string) {
   }
 }
 
-export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseModalProps) {
+export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice = false }: AddExpenseModalProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [compressing, setCompressing] = useState(false)
@@ -134,6 +162,14 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
   
   const [magicInput, setMagicInput] = useState("")
   const [magicParsed, setMagicParsed] = useState(false)
+
+  // Voice Assistant states
+  const [isListening, setIsListening] = useState(false)
+  const [voiceTranscript, setVoiceTranscript] = useState("")
+  const [voiceAnalyzed, setVoiceAnalyzed] = useState<any>(null)
+  const recognitionRef = useRef<any>(null)
+
+  const [userCategories, setUserCategories] = useState<string[]>([])
 
   const [formData, setFormData] = useState({
     amount: "",
@@ -147,27 +183,19 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
     receiptUrl: "" as string
   })
 
+  // Load user usage habits from localStorage
   useEffect(() => {
-    if (open) {
-      setMagicInput("")
-      setMagicParsed(false)
-      setFormData({
-        amount: "",
-        category: "",
-        description: "",
-        date: new Date().toISOString().split('T')[0],
-        paymentMethod: "UPI",
-        notes: "",
-        isRecurring: false,
-        recurrenceRule: "MONTHLY",
-        receiptUrl: ""
-      })
-    }
-  }, [open])
+    try {
+      const saved = JSON.parse(localStorage.getItem("billbrain_frequent_categories") || "[]")
+      if (Array.isArray(saved)) {
+        setUserCategories(saved)
+      }
+    } catch {}
+  }, [])
 
-  const handleMagicInputChange = (text: string) => {
+  const handleMagicInputChange = useCallback((text: string) => {
     setMagicInput(text)
-    const parsed = parseNaturalExpense(text)
+    const parsed = parseNaturalExpense(text, userCategories)
     if (parsed && (parsed.amount || parsed.category || parsed.description || parsed.paymentMethod)) {
       setMagicParsed(true)
       setFormData(prev => ({
@@ -182,7 +210,123 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
     } else {
       setMagicParsed(false)
     }
-  }
+  }, [userCategories])
+
+  // Stop Speech Recognition safely
+  const stopVoiceAssistant = useCallback(() => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop()
+      } catch {}
+      recognitionRef.current = null
+    }
+    setIsListening(false)
+  }, [])
+
+  // Start Speech Recognition
+  const startVoiceAssistant = useCallback(() => {
+    const SpeechRecognition = typeof window !== "undefined" && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+
+    if (!SpeechRecognition) {
+      notify.info("Voice Not Supported", "Your browser does not support voice speech. You can type in the box instead.")
+      return
+    }
+
+    // Stop any existing instance
+    stopVoiceAssistant()
+
+    try {
+      const recognition = new SpeechRecognition()
+      recognition.continuous = false
+      recognition.interimResults = true
+      recognition.lang = navigator.language || "en-IN"
+
+      recognition.onstart = () => {
+        setIsListening(true)
+        setVoiceTranscript("")
+        setVoiceAnalyzed(null)
+      }
+
+      recognition.onresult = (event: any) => {
+        let interim = ""
+        let final = ""
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            final += event.results[i][0].transcript
+          } else {
+            interim += event.results[i][0].transcript
+          }
+        }
+        const text = final || interim
+        if (text) {
+          setVoiceTranscript(text)
+          setMagicInput(text)
+          const parsed = parseNaturalExpense(text, userCategories)
+          if (parsed) {
+            setVoiceAnalyzed(parsed)
+            setFormData(prev => ({
+              ...prev,
+              amount: parsed.amount || prev.amount,
+              category: parsed.category || prev.category,
+              paymentMethod: parsed.paymentMethod || prev.paymentMethod,
+              description: parsed.description || prev.description,
+              date: parsed.date || prev.date,
+              notes: text.trim()
+            }))
+            setMagicParsed(true)
+          }
+        }
+      }
+
+      recognition.onerror = (event: any) => {
+        setIsListening(false)
+        if (event.error !== "no-speech") {
+          notify.error("Voice Error", `Microphone error: ${event.error}`)
+        }
+      }
+
+      recognition.onend = () => {
+        setIsListening(false)
+      }
+
+      recognitionRef.current = recognition
+      recognition.start()
+    } catch (e: any) {
+      setIsListening(false)
+      notify.error("Microphone Access", e.message || "Failed to start microphone.")
+    }
+  }, [stopVoiceAssistant, userCategories])
+
+  // Reset modal state on open
+  useEffect(() => {
+    if (open) {
+      setMagicInput("")
+      setMagicParsed(false)
+      setVoiceTranscript("")
+      setVoiceAnalyzed(null)
+      setIsListening(false)
+      setFormData({
+        amount: "",
+        category: "",
+        description: "",
+        date: new Date().toISOString().split('T')[0],
+        paymentMethod: "UPI",
+        notes: "",
+        isRecurring: false,
+        recurrenceRule: "MONTHLY",
+        receiptUrl: ""
+      })
+
+      // Auto start voice if requested
+      if (autoStartVoice) {
+        setTimeout(() => {
+          startVoiceAssistant()
+        }, 300)
+      }
+    } else {
+      stopVoiceAssistant()
+    }
+  }, [open, autoStartVoice, startVoiceAssistant, stopVoiceAssistant])
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -227,6 +371,15 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
       })
 
       if (res.ok) {
+        // Learn user habit: remember frequently used category
+        try {
+          const current = JSON.parse(localStorage.getItem("billbrain_frequent_categories") || "[]")
+          if (!current.includes(formData.category)) {
+            const updated = [formData.category, ...current].slice(0, 15)
+            localStorage.setItem("billbrain_frequent_categories", JSON.stringify(updated))
+          }
+        } catch {}
+
         notify.success("Expense Added", `₹${parseFloat(formData.amount).toLocaleString()} added to ${formData.category}`)
         onOpenChange(false)
         if (typeof window !== "undefined") {
@@ -248,22 +401,139 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] max-h-[92vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[490px] max-h-[92vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+          <DialogTitle className="flex items-center justify-between text-xl font-bold pr-6">
             <span>Add Expense</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={isListening ? stopVoiceAssistant : startVoiceAssistant}
+              className={`h-8 px-2.5 rounded-full text-xs font-semibold transition-all ${
+                isListening 
+                  ? "bg-rose-500 text-white border-rose-600 animate-pulse hover:bg-rose-600" 
+                  : "border-primary/30 text-primary hover:bg-primary/10"
+              }`}
+            >
+              {isListening ? (
+                <>
+                  <MicOff className="w-3.5 h-3.5 mr-1" />
+                  <span>Listening...</span>
+                </>
+              ) : (
+                <>
+                  <Mic className="w-3.5 h-3.5 mr-1 text-primary" />
+                  <span>Voice Note</span>
+                </>
+              )}
+            </Button>
           </DialogTitle>
           <DialogDescription className="text-xs sm:text-sm">
-            Save in your own words, or customize details and attach receipts below.
+            Speak or type in your own words, review details, and save.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Live Voice Listening Indicator */}
+        {isListening && (
+          <div className="bg-rose-500/10 border-2 border-rose-500/30 rounded-2xl p-3.5 flex flex-col items-center justify-center text-center space-y-2 animate-in fade-in-50 duration-200">
+            <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-xs">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+              </span>
+              <span>Listening to your voice... Speak naturally</span>
+            </div>
+
+            <p className="text-xs text-muted-foreground italic max-w-sm">
+              "{voiceTranscript || "e.g. Spent 350 for lunch with friends using Google Pay..."}"
+            </p>
+
+            <Button
+              type="button"
+              size="sm"
+              onClick={stopVoiceAssistant}
+              className="bg-rose-600 hover:bg-rose-700 text-white text-xs h-7 px-3 rounded-lg"
+            >
+              Done Speaking
+            </Button>
+          </div>
+        )}
+
+        {/* Voice Auto-Analyzed Preview Card — User Decides! */}
+        {voiceAnalyzed && !isListening && (
+          <div className="bg-gradient-to-br from-emerald-500/10 via-primary/5 to-background border-2 border-emerald-500/30 rounded-2xl p-3.5 space-y-2.5 animate-in fade-in-50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span>Voice Analyzed Automatically</span>
+              </div>
+              <button
+                type="button"
+                onClick={startVoiceAssistant}
+                className="text-[11px] text-muted-foreground hover:text-foreground font-medium flex items-center gap-1"
+                title="Speak again"
+              >
+                <RotateCcw className="w-3 h-3" /> Re-speak
+              </button>
+            </div>
+
+            {/* Analyzed Pills Grid */}
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-background/80 p-2 rounded-xl border border-border/60">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Amount</span>
+                <span className="text-sm font-extrabold text-foreground">
+                  ₹{formData.amount || "0.00"}
+                </span>
+              </div>
+
+              <div className="bg-background/80 p-2 rounded-xl border border-border/60">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Category</span>
+                <span className="text-xs font-bold text-primary truncate block">
+                  {formData.category || "Unassigned"}
+                </span>
+              </div>
+
+              <div className="bg-background/80 p-2 rounded-xl border border-border/60">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Method</span>
+                <span className="text-xs font-semibold text-foreground truncate block">
+                  {formData.paymentMethod || "UPI"}
+                </span>
+              </div>
+
+              <div className="bg-background/80 p-2 rounded-xl border border-border/60">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Description</span>
+                <span className="text-xs font-medium text-foreground truncate block">
+                  {formData.description || "Manual Entry"}
+                </span>
+              </div>
+            </div>
+
+            {/* User Decision Action: 1-click confirm or edit below */}
+            <div className="pt-1 flex items-center justify-between gap-2">
+              <p className="text-[11px] text-muted-foreground">
+                You decide: Review/edit fields below or save now.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSubmit}
+                disabled={loading}
+                className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shrink-0"
+              >
+                {loading ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Check className="w-3.5 h-3.5 mr-1 stroke-[3]" />}
+                Save Now
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Magic "In Your Own Words" One-Liner Box */}
         <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-purple-500/10 p-3 sm:p-3.5 rounded-2xl border border-primary/20 space-y-2 mt-1">
           <div className="flex items-center justify-between">
             <label htmlFor="magicInput" className="text-xs font-bold text-primary flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-primary" />
-              <span>Save in your own words (Quick Fill)</span>
+              <span>Type or Speak in your own words</span>
             </label>
             {magicInput && (
               <button 
@@ -271,6 +541,7 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
                 onClick={() => {
                   setMagicInput("")
                   setMagicParsed(false)
+                  setVoiceAnalyzed(null)
                 }} 
                 className="text-[11px] text-muted-foreground hover:text-foreground font-medium"
               >
@@ -279,27 +550,38 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
             )}
           </div>
 
-          <div className="relative">
+          <div className="relative flex items-center">
             <Input
               id="magicInput"
               value={magicInput}
               onChange={(e) => handleMagicInputChange(e.target.value)}
               placeholder="e.g. 350 biryani lunch UPI, or petrol 500 cash..."
-              className="bg-background text-sm pr-8 border-primary/30 focus-visible:ring-primary shadow-xs rounded-xl"
-              autoFocus
+              className="bg-background text-sm pr-16 border-primary/30 focus-visible:ring-primary shadow-xs rounded-xl"
+              autoFocus={!autoStartVoice}
             />
-            {magicParsed && (
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-0.5" title="Auto-filled fields below">
-                <Check className="w-4 h-4 stroke-[3]" />
-              </span>
-            )}
-          </div>
 
-          {magicParsed && (
-            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-              <Check className="w-3 h-3 stroke-[3]" /> Fields below auto-filled. You can review or edit anytime.
-            </p>
-          )}
+            <div className="absolute right-1.5 flex items-center gap-1">
+              {/* Mic Trigger inside input */}
+              <button
+                type="button"
+                onClick={isListening ? stopVoiceAssistant : startVoiceAssistant}
+                className={`p-1.5 rounded-lg transition-colors ${
+                  isListening
+                    ? "text-rose-600 bg-rose-500/20 animate-pulse"
+                    : "text-muted-foreground hover:text-primary hover:bg-muted"
+                }`}
+                title="Tap to speak your expense"
+              >
+                <Mic className="w-4 h-4" />
+              </button>
+
+              {magicParsed && (
+                <span className="text-emerald-600 dark:text-emerald-400 text-xs font-bold mr-1" title="Fields auto-filled">
+                  <Check className="w-4 h-4 stroke-[3]" />
+                </span>
+              )}
+            </div>
+          </div>
 
           {/* Quick Examples */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide text-[11px]">
@@ -317,7 +599,7 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
           </div>
         </div>
 
-        {/* Existing Full Form Fields (Kept 100% Intact) */}
+        {/* Existing Full Form Fields (User has full edit & decision control) */}
         <form onSubmit={handleSubmit} className="space-y-4 pt-1">
           <div className="space-y-1.5">
             <Label htmlFor="amount" className="text-xs font-semibold">Amount (INR)</Label>
@@ -345,7 +627,9 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
                 onChange={(e) => setFormData({...formData, category: e.target.value})}
               />
               <datalist id="category-suggestions">
-                {CATEGORIES.map(c => <option key={c} value={c} />)}
+                {Array.from(new Set([...userCategories, ...CATEGORIES])).map(c => (
+                  <option key={c} value={c} />
+                ))}
               </datalist>
             </div>
             
@@ -386,12 +670,12 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
             />
           </div>
 
-          {/* Notes / User's own words */}
+          {/* Notes / Spoken sentence */}
           <div className="space-y-1.5">
-            <Label htmlFor="notes" className="text-xs font-semibold text-muted-foreground">Notes / Wish Details (Optional)</Label>
+            <Label htmlFor="notes" className="text-xs font-semibold text-muted-foreground">Notes / Spoken Words</Label>
             <Input 
               id="notes" 
-              placeholder="e.g. Personal notes, who was with you, why you bought it..."
+              placeholder="e.g. Full speech transcript or personal notes..."
               value={formData.notes}
               onChange={(e) => setFormData({...formData, notes: e.target.value})}
               className="text-xs"
