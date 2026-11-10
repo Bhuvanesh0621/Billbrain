@@ -17,12 +17,12 @@ import {
   Mic, 
   MicOff, 
   RotateCcw, 
-  CheckCircle2, 
-  ArrowRight,
-  Volume2
+  CheckCircle2,
+  Globe
 } from "lucide-react"
 import { compressImageToDataUrl } from "@/lib/imageUtils"
 import { notify } from "@/components/ui/toast"
+import { useLanguage } from "@/components/providers/LanguageProvider"
 
 interface AddExpenseModalProps {
   open: boolean
@@ -44,9 +44,10 @@ const PAYMENT_METHODS = [
 
 const QUICK_EXAMPLES = [
   "350 Biryani lunch UPI",
-  "Petrol 500 Cash",
-  "Groceries 1200 Card",
-  "Tea & snacks 40 Cash",
+  "Petrol ku 500 cash",
+  "Kaikari 250 gpay",
+  "Tea snacks 40 cash",
+  "பெட்ரோல் 500 ஜிபே",
   "Mobile recharge 299 UPI"
 ]
 
@@ -59,8 +60,8 @@ function parseNaturalExpense(input: string, userCategories: string[] = []) {
   let detectedCategory = ""
   let detectedDate = ""
 
-  // 1. Amount detection: look for numbers like "₹500", "500", "500.50", "rs 500", "500rs", "2,500"
-  const amountMatch = text.match(/(?:₹|rs\.?|inr|rupees?)?\s*(\d+(?:,\d+)*(?:\.\d+)?)(?:\s*(?:rs|inr|rupees?|\/-))?/i)
+  // 1. Amount detection: numbers with Rs, ₹, rooba, roova, kaasu, panam, ரூபாய்
+  const amountMatch = text.match(/(?:₹|rs\.?|inr|rupees?|rooba|roova|kaasu|panam|ரூபாய்|ரூ\.?)?\s*(\d+(?:,\d+)*(?:\.\d+)?)(?:\s*(?:rs|inr|rupees?|rooba|roova|kaasu|panam|ரூபாய்|ரூ|\/-))?/i)
   if (amountMatch) {
     const rawNum = amountMatch[1].replace(/,/g, "")
     const num = parseFloat(rawNum)
@@ -69,18 +70,26 @@ function parseNaturalExpense(input: string, userCategories: string[] = []) {
     }
   }
 
-  // 2. Payment method detection
-  if (/(?:via|using|through|by|with)?\s*(upi|gpay|google\s*pay|phonepe|paytm|bhim)/i.test(text)) {
-    detectedPaymentMethod = "UPI"
-  } else if (/(?:via|using|through|by|with)?\s*(cash|hand\s*cash)/i.test(text)) {
-    detectedPaymentMethod = "Cash"
-  } else if (/(?:via|using|through|by|with)?\s*(card|credit\s*card|debit\s*card|pos)/i.test(text)) {
-    detectedPaymentMethod = "Card"
-  } else if (/(?:via|using|through|by|with)?\s*(net\s*banking|netbanking|bank\s*transfer|neft|imps)/i.test(text)) {
-    detectedPaymentMethod = "Net Banking"
+  // Word-based number recognition for common Tanglish / Tamil amounts
+  const lower = text.toLowerCase()
+  if (!detectedAmount) {
+    if (/\b(aayiram|ஆயிரம்)\b/i.test(lower)) detectedAmount = "1000"
+    else if (/\b(ainooru|ஐநூறு)\b/i.test(lower)) detectedAmount = "500"
+    else if (/\b(irunooru|இருநூறு)\b/i.test(lower)) detectedAmount = "200"
+    else if (/\b(nooru|நூறு)\b/i.test(lower)) detectedAmount = "100"
+    else if (/\b(ambathu|ஐம்பது)\b/i.test(lower)) detectedAmount = "50"
   }
 
-  const lower = text.toLowerCase()
+  // 2. Payment method detection (English, Tanglish, Tamil)
+  if (/(?:via|using|through|by|with|la)?\s*(upi|gpay|google\s*pay|phonepe|paytm|bhim|online|online\s*la|ஜிபே|கூகுள்\s*பே|யுபிஐ)/i.test(text)) {
+    detectedPaymentMethod = "UPI"
+  } else if (/(?:via|using|through|by|with|la)?\s*(cash|hand\s*cash|kai\s*kaasu|kaasu|kaasa|panam|panama|ரொக்கம்|பணம்|கை\s*காசு)/i.test(text)) {
+    detectedPaymentMethod = "Cash"
+  } else if (/(?:via|using|through|by|with|la)?\s*(card|credit\s*card|debit\s*card|pos|swipe|கார்டு|அட்டை)/i.test(text)) {
+    detectedPaymentMethod = "Card"
+  } else if (/(?:via|using|through|by|with|la)?\s*(net\s*banking|netbanking|bank\s*transfer|neft|imps|account\s*la|வங்கி)/i.test(text)) {
+    detectedPaymentMethod = "Net Banking"
+  }
 
   // 3. User usage adaptive category matching: check user's saved/frequent categories first
   if (userCategories && userCategories.length > 0) {
@@ -92,51 +101,51 @@ function parseNaturalExpense(input: string, userCategories: string[] = []) {
     }
   }
 
-  // Fallback to built-in category keywords
+  // Fallback to built-in category keywords (English, Tanglish & Tamil)
   if (!detectedCategory) {
-    if (/(petrol|fuel|diesel|gasoline|cng)/i.test(lower)) {
+    if (/(petrol|fuel|diesel|gasoline|cng|vandi\s*petrol|bike\s*petrol|car\s*petrol|பெட்ரோல்|டீசல்|எரிபொருள்|வண்டி)/i.test(lower)) {
       detectedCategory = "Petrol"
-    } else if (/(food|lunch|dinner|breakfast|biryani|pizza|burger|snack|snacks|tea|chai|coffee|restaurant|hotel|swiggy|zomato|cafe|dosa|idli|meals)/i.test(lower)) {
+    } else if (/(food|lunch|dinner|breakfast|biryani|briyani|pizza|burger|snack|snacks|tea|chai|coffee|kaapi|restaurant|hotel|swiggy|zomato|cafe|dosa|idli|meals|parotta|sapadu|saapadu|sappadu|kudichen|saaptom|saapten|tiffin|சாப்பாடு|உணவு|தேநீர்|காபி|ஹோட்டல்|டிபன்)/i.test(lower)) {
       detectedCategory = "Food"
-    } else if (/(groceries|grocery|vegetable|vegetables|fruits|milk|dmart|d-mart|supermarket|rice|provision|kirana)/i.test(lower)) {
+    } else if (/(groceries|grocery|vegetable|vegetables|fruits|milk|paal|dmart|d-mart|supermarket|rice|arisi|provision|kirana|kaikari|kaaikari|maligai|maligai\s*saman|veetuku\s*saman|kadai|மளிகை|காய்கறி|பால்|பழங்கள்|அரிசி)/i.test(lower)) {
       detectedCategory = "Groceries"
-    } else if (/(shopping|dress|clothes|shirt|pant|shoes|amazon|flipkart|myntra|zara|h&m)/i.test(lower)) {
+    } else if (/(shopping|dress|clothes|shirt|pant|shoes|amazon|flipkart|myntra|zara|thuni|seruppu|vaanginen|துணி|ஆடைகள்|ஷாப்பிங்)/i.test(lower)) {
       detectedCategory = "Shopping"
-    } else if (/(electricity|eb\s*bill|current\s*bill|tneb|power)/i.test(lower)) {
+    } else if (/(electricity|eb\s*bill|current\s*bill|tneb|power|eb\s*kattinen|current\s*kattinen|மின்சாரம்|மின்\s*கட்டணம்|மின்வாரி)/i.test(lower)) {
       detectedCategory = "Electricity"
-    } else if (/(internet|wifi|broadband|fiber|act|airtel\s*fiber|jio\s*fiber)/i.test(lower)) {
+    } else if (/(internet|wifi|broadband|fiber|act|airtel\s*fiber|jio\s*fiber|inthaneyam|இணையம்|வைஃபை)/i.test(lower)) {
       detectedCategory = "Internet"
-    } else if (/(mobile|recharge|jio|airtel|vi|phone\s*bill)/i.test(lower)) {
+    } else if (/(mobile|recharge|jio|airtel|vi|phone\s*bill|recharge\s*panninen|ரீசார்ஜ்|மொபைல்|செல்போன்)/i.test(lower)) {
       detectedCategory = "Mobile"
-    } else if (/(insurance|lic|health\s*insurance|term\s*insurance)/i.test(lower)) {
+    } else if (/(insurance|lic|health\s*insurance|term\s*insurance|kaappidu|காப்பீடு)/i.test(lower)) {
       detectedCategory = "Insurance"
-    } else if (/(emi|loan|mortgage|credit\s*card\s*bill)/i.test(lower)) {
+    } else if (/(emi|loan|mortgage|credit\s*card\s*bill|kadan|vatti|thavanai|கடன்|வட்டி|தவணை)/i.test(lower)) {
       detectedCategory = "EMI / Loans"
-    } else if (/(education|school|college|fees|tuition|books|stationery|course|exam)/i.test(lower)) {
+    } else if (/(education|school|college|fees|tuition|books|stationery|course|exam|padippu|kalvi|fees\s*kattinen|கல்வி|கல்லூரி|பள்ளி|கட்டணம்)/i.test(lower)) {
       detectedCategory = "Education"
-    } else if (/(healthcare|hospital|medicine|medical|doctor|pharmacy|clinic|tablets|apollo)/i.test(lower)) {
+    } else if (/(healthcare|hospital|medicine|medical|doctor|pharmacy|clinic|tablets|apollo|marunthu|maruthuvam|மருந்து|மருத்துவம்|மருத்துவர்|மருத்துவமனை)/i.test(lower)) {
       detectedCategory = "Healthcare"
-    } else if (/(travel|trip|flight|train|irctc|bus|cab|taxi|uber|ola|auto|flight|toll|fastag)/i.test(lower)) {
+    } else if (/(travel|trip|flight|train|irctc|bus|cab|taxi|uber|ola|auto|flight|toll|fastag|ooruku|oorukku|payanam|டிக்கெட்|பயணம்|ஆட்டோ|பேருந்து|ரயில்)/i.test(lower)) {
       detectedCategory = "Travel"
-    } else if (/(movie|cinema|theatre|film|netflix|prime|hotstar|popcorn)/i.test(lower)) {
+    } else if (/(movie|cinema|theatre|film|netflix|prime|hotstar|popcorn|padam|cinema\s*ticket|திரைப்படம்|படம்|சினிமா)/i.test(lower)) {
       detectedCategory = "Personal"
     }
   }
 
-  // 4. Date detection: "yesterday", "today"
-  if (/\byesterday\b/i.test(lower)) {
+  // 4. Date detection: "yesterday", "today", "innaiku", "nethu", "இன்று", "நேற்று"
+  if (/(yesterday|nethu|naethu|நேற்று|நேத்து)/i.test(lower)) {
     const y = new Date()
     y.setDate(y.getDate() - 1)
     detectedDate = y.toISOString().split("T")[0]
-  } else if (/\btoday\b/i.test(lower)) {
+  } else if (/(today|innaiku|inniku|இன்று|இன்னைக்கு)/i.test(lower)) {
     detectedDate = new Date().toISOString().split("T")[0]
   }
 
-  // 5. Clean Description: remove numbers, payment words, "yesterday/today", "for", "via", "at", "paid"
+  // 5. Clean Description: remove numbers, payment words, connectors
   let cleanDesc = text
-    .replace(/(?:₹|rs\.?|inr|rupees?)?\s*\d+(?:,\d+)*(?:\.\d+)?(?:\s*(?:rs|inr|rupees?|\/-))?/gi, "")
-    .replace(/\b(upi|gpay|google\s*pay|phonepe|paytm|bhim|cash|card|credit\s*card|debit\s*card|net\s*banking|netbanking)\b/gi, "")
-    .replace(/\b(yesterday|today|paid|spend|spent|bought|buy|via|using|through|by|with|for|at|rupees|rupee)\b/gi, "")
+    .replace(/(?:₹|rs\.?|inr|rupees?|rooba|roova|kaasu|panam|ரூபாய்|ரூ\.?)?\s*\d+(?:,\d+)*(?:\.\d+)?(?:\s*(?:rs|inr|rupees?|rooba|roova|kaasu|panam|ரூபாய்|ரூ|\/-))?/gi, "")
+    .replace(/\b(upi|gpay|google\s*pay|phonepe|paytm|bhim|cash|card|credit\s*card|debit\s*card|net\s*banking|netbanking|ஜிபே|கூகுள்\s*பே|யுபிஐ|ரொக்கம்|பணம்)\b/gi, "")
+    .replace(/\b(yesterday|today|nethu|innaiku|paid|spend|spent|bought|buy|via|using|through|by|with|for|at|rupees|rupee|rooba|roova|ku|la|kattinen|vaanginen|panninen|potten)\b/gi, "")
     .replace(/\s+/g, " ")
     .trim()
 
@@ -156,6 +165,7 @@ function parseNaturalExpense(input: string, userCategories: string[] = []) {
 
 export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice = false }: AddExpenseModalProps) {
   const router = useRouter()
+  const { language } = useLanguage()
   const [loading, setLoading] = useState(false)
   const [compressing, setCompressing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -165,6 +175,7 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
 
   // Voice Assistant states
   const [isListening, setIsListening] = useState(false)
+  const [voiceLang, setVoiceLang] = useState<"en-IN" | "ta-IN">("en-IN")
   const [voiceTranscript, setVoiceTranscript] = useState("")
   const [voiceAnalyzed, setVoiceAnalyzed] = useState<any>(null)
   const recognitionRef = useRef<any>(null)
@@ -192,6 +203,15 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
       }
     } catch {}
   }, [])
+
+  // Auto-set voice language if app language is Tamil
+  useEffect(() => {
+    if (language === "ta") {
+      setVoiceLang("ta-IN")
+    } else {
+      setVoiceLang("en-IN") // en-IN handles Tanglish & Indian English
+    }
+  }, [language])
 
   const handleMagicInputChange = useCallback((text: string) => {
     setMagicInput(text)
@@ -228,18 +248,17 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
     const SpeechRecognition = typeof window !== "undefined" && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
 
     if (!SpeechRecognition) {
-      notify.info("Voice Not Supported", "Your browser does not support voice speech. You can type in the box instead.")
+      notify.info("Voice Not Supported", "Your browser does not support voice speech. You can type in Tanglish/Tamil in the box instead.")
       return
     }
 
-    // Stop any existing instance
     stopVoiceAssistant()
 
     try {
       const recognition = new SpeechRecognition()
       recognition.continuous = false
       recognition.interimResults = true
-      recognition.lang = navigator.language || "en-IN"
+      recognition.lang = voiceLang
 
       recognition.onstart = () => {
         setIsListening(true)
@@ -295,7 +314,7 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
       setIsListening(false)
       notify.error("Microphone Access", e.message || "Failed to start microphone.")
     }
-  }, [stopVoiceAssistant, userCategories])
+  }, [stopVoiceAssistant, userCategories, voiceLang])
 
   // Reset modal state on open
   useEffect(() => {
@@ -317,7 +336,6 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
         receiptUrl: ""
       })
 
-      // Auto start voice if requested
       if (autoStartVoice) {
         setTimeout(() => {
           startVoiceAssistant()
@@ -401,36 +419,71 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[490px] max-h-[92vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] max-h-[92vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between text-xl font-bold pr-6">
-            <span>Add Expense</span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={isListening ? stopVoiceAssistant : startVoiceAssistant}
-              className={`h-8 px-2.5 rounded-full text-xs font-semibold transition-all ${
-                isListening 
-                  ? "bg-rose-500 text-white border-rose-600 animate-pulse hover:bg-rose-600" 
-                  : "border-primary/30 text-primary hover:bg-primary/10"
-              }`}
-            >
-              {isListening ? (
-                <>
-                  <MicOff className="w-3.5 h-3.5 mr-1" />
-                  <span>Listening...</span>
-                </>
-              ) : (
-                <>
-                  <Mic className="w-3.5 h-3.5 mr-1 text-primary" />
-                  <span>Voice Note</span>
-                </>
-              )}
-            </Button>
-          </DialogTitle>
+          <div className="flex items-center justify-between pr-6">
+            <DialogTitle className="text-xl font-bold">
+              <span>Add Expense</span>
+            </DialogTitle>
+
+            <div className="flex items-center gap-1.5">
+              {/* Voice Language Selector */}
+              <div className="flex items-center bg-muted/60 p-0.5 rounded-lg border border-border/50 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setVoiceLang("en-IN")}
+                  className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                    voiceLang === "en-IN"
+                      ? "bg-background text-primary font-bold shadow-2xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  title="Recognize Tanglish & English"
+                >
+                  Tanglish
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVoiceLang("ta-IN")}
+                  className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                    voiceLang === "ta-IN"
+                      ? "bg-background text-primary font-bold shadow-2xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  title="Recognize தமிழ் (Tamil)"
+                >
+                  தமிழ்
+                </button>
+              </div>
+
+              {/* Voice Note Button */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={isListening ? stopVoiceAssistant : startVoiceAssistant}
+                className={`h-7 px-2.5 rounded-lg text-xs font-semibold transition-all ${
+                  isListening 
+                    ? "bg-rose-500 text-white border-rose-600 animate-pulse hover:bg-rose-600" 
+                    : "border-primary/30 text-primary hover:bg-primary/10"
+                }`}
+              >
+                {isListening ? (
+                  <>
+                    <MicOff className="w-3.5 h-3.5 mr-1" />
+                    <span>Listening...</span>
+                  </>
+                ) : (
+                  <>
+                    <Mic className="w-3.5 h-3.5 mr-1 text-primary" />
+                    <span>Voice</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
           <DialogDescription className="text-xs sm:text-sm">
-            Speak or type in your own words, review details, and save.
+            Speak or type in English, Tanglish, or தமிழ் — auto-analyzed instantly.
           </DialogDescription>
         </DialogHeader>
 
@@ -442,11 +495,11 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
               </span>
-              <span>Listening to your voice... Speak naturally</span>
+              <span>Listening ({voiceLang === 'ta-IN' ? 'தமிழ்' : 'Tanglish / English'})... Speak now</span>
             </div>
 
             <p className="text-xs text-muted-foreground italic max-w-sm">
-              "{voiceTranscript || "e.g. Spent 350 for lunch with friends using Google Pay..."}"
+              "{voiceTranscript || (voiceLang === 'ta-IN' ? 'எ.கா. பெட்ரோல் 500 ரூபாய் ஜிபே...' : 'e.g. Petrol ku 500 cash, or biryani 350 gpay...')}"
             </p>
 
             <Button
@@ -466,7 +519,7 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>Voice Analyzed Automatically</span>
+                <span>Analyzed from {voiceLang === 'ta-IN' ? 'தமிழ்' : 'Tanglish / English'}</span>
               </div>
               <button
                 type="button"
@@ -512,7 +565,7 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
             {/* User Decision Action: 1-click confirm or edit below */}
             <div className="pt-1 flex items-center justify-between gap-2">
               <p className="text-[11px] text-muted-foreground">
-                You decide: Review/edit fields below or save now.
+                Review/edit fields below, or save now:
               </p>
               <Button
                 type="button"
@@ -533,7 +586,7 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
           <div className="flex items-center justify-between">
             <label htmlFor="magicInput" className="text-xs font-bold text-primary flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-primary" />
-              <span>Type or Speak in your own words</span>
+              <span>English / Tanglish / தமிழ் Quick Note</span>
             </label>
             {magicInput && (
               <button 
@@ -555,7 +608,7 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
               id="magicInput"
               value={magicInput}
               onChange={(e) => handleMagicInputChange(e.target.value)}
-              placeholder="e.g. 350 biryani lunch UPI, or petrol 500 cash..."
+              placeholder="e.g. Petrol ku 500 cash, or 350 biryani UPI, or காய்கறி 200..."
               className="bg-background text-sm pr-16 border-primary/30 focus-visible:ring-primary shadow-xs rounded-xl"
               autoFocus={!autoStartVoice}
             />
@@ -570,7 +623,7 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
                     ? "text-rose-600 bg-rose-500/20 animate-pulse"
                     : "text-muted-foreground hover:text-primary hover:bg-muted"
                 }`}
-                title="Tap to speak your expense"
+                title="Tap to speak in English, Tanglish, or தமிழ்"
               >
                 <Mic className="w-4 h-4" />
               </button>
@@ -583,7 +636,7 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
             </div>
           </div>
 
-          {/* Quick Examples */}
+          {/* Quick Tanglish & Tamil Examples */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide text-[11px]">
             <span className="text-muted-foreground shrink-0 font-medium">Try:</span>
             {QUICK_EXAMPLES.map((example) => (

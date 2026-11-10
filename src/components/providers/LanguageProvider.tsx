@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react"
 
-type Language = "en" | "ta"
+export type Language = "en" | "ta" | "tanglish"
 
 interface LanguageContextType {
   language: Language
@@ -78,6 +78,40 @@ const translations: Record<Language, Record<string, string>> = {
     "total_amount": "மொத்தத் தொகை",
     "aggregated_from": "மொத்தமாக",
     "matched_items": "பொருந்திய உருப்படிகள்"
+  },
+  tanglish: {
+    "dashboard": "Dashboard",
+    "bills": "Bills",
+    "analytics": "Analytics",
+    "predictions": "Kanippugal (Predictions)",
+    "subscriptions": "Subscriptions",
+    "savings": "Semippu (Savings)",
+    "calendar": "Naatkaati (Calendar)",
+    "household": "Veedu (Household)",
+    "ai_assistant": "BillBrain Helper",
+    "track_expense": "Selavu Podu (Add)",
+    "spent_today": "Innaiku Selavu",
+    "this_week": "Indha Vaaram",
+    "this_month": "Indha Maasam",
+    "remaining_budget": "Meedhi Budget",
+    "daily_limit": "Daily Selavu Limit",
+    "good_evening": "Maalai Vanakkam",
+    "good_morning": "Kaalai Vanakkam",
+    "good_afternoon": "Madhiya Vanakkam",
+    "how_money_moving": "Innaiku unga panam eppadi pogudhu paarpom.",
+    "quick_add": "Seekiram Podu",
+    "recent_transactions": "Kadaisi Selavugal",
+    "view_all": "Ellathaiyum Paar",
+    "no_transactions": "Selavugal onnum illa.",
+    "expense_timeline": "Selavu Timeline",
+    "daily_spending": "Dhinam Selavugal",
+    "smart_search": "Smart Thedal",
+    "instantly_find": "Edhaavadhu selavu, bill illa subscription-a kandupudinga.",
+    "search_placeholder": "Petrol, Loan, Food, Kaikari nu thedunga...",
+    "no_records": "Pasi onnum kidaikala matching",
+    "total_amount": "Moththa Thogai (Total)",
+    "aggregated_from": "Moththamaaga",
+    "matched_items": "Porundhiya Items"
   }
 }
 
@@ -89,7 +123,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Run on client side only to prevent hydration mismatches
     const saved = localStorage.getItem("billbrain_lang") as Language
-    if (saved && (saved === "en" || saved === "ta")) {
+    if (saved && (saved === "en" || saved === "ta" || saved === "tanglish")) {
       setTimeout(() => setLanguage(saved), 0)
     }
   }, [])
@@ -99,8 +133,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("billbrain_lang", lang)
   }
 
-  const t = (key: string) => {
-    return translations[language][key] || key
+  const t = (key: string): string => {
+    const langDict = translations[language] || translations["en"]
+    return langDict[key] || translations["en"][key] || key
   }
 
   return (
@@ -112,7 +147,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
 export function useLanguage() {
   const context = useContext(LanguageContext)
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useLanguage must be used within a LanguageProvider")
   }
   return context

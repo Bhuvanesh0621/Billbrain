@@ -66,6 +66,18 @@ export function TopNav() {
   const [expenseModalOpen, setExpenseModalOpen] = useState(false)
   const [topSearchQuery, setTopSearchQuery] = useState("")
 
+  const cycleLanguage = () => {
+    if (language === 'en') setLanguage('ta')
+    else if (language === 'ta') setLanguage('tanglish')
+    else setLanguage('en')
+  }
+
+  const getLanguageLabel = () => {
+    if (language === 'en') return 'English'
+    if (language === 'ta') return 'தமிழ்'
+    return 'Tanglish'
+  }
+
   const handleTopSearch = (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = topSearchQuery.trim()
@@ -149,10 +161,10 @@ export function TopNav() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setLanguage(language === 'ta' ? 'en' : 'ta')}
+              onClick={cycleLanguage}
               className="text-xs h-8"
             >
-              🌐 {language === 'ta' ? 'Switch to English' : 'தமிழ் மாற்று'}
+              🌐 {getLanguageLabel()}
             </Button>
             <Button
               variant="ghost"
@@ -228,10 +240,11 @@ export function TopNav() {
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => setLanguage(language === 'ta' ? 'en' : 'ta')}
-            className="hidden sm:flex border-primary/20 text-primary hover:bg-primary/10 h-8 text-xs"
+            onClick={cycleLanguage}
+            className="hidden sm:flex border-primary/20 text-primary hover:bg-primary/10 h-8 text-xs font-semibold"
+            title="Switch Language: English / தமிழ் / Tanglish"
           >
-            {language === 'ta' ? 'English' : 'தமிழ்'}
+            🌐 {getLanguageLabel()}
           </Button>
           
           <Button 
