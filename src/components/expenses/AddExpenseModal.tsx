@@ -16,9 +16,11 @@ import {
   Check, 
   Mic, 
   MicOff, 
-  RotateCcw, 
-  CheckCircle2,
-  Globe
+  RotateCcw,
+  IndianRupee,
+  Calendar,
+  CreditCard,
+  Tag
 } from "lucide-react"
 import { compressImageToDataUrl } from "@/lib/imageUtils"
 import { notify } from "@/components/ui/toast"
@@ -43,12 +45,11 @@ const PAYMENT_METHODS = [
 ]
 
 const QUICK_EXAMPLES = [
-  "350 Biryani lunch UPI",
+  "350 Biryani UPI",
   "Petrol ku 500 cash",
   "Kaikari 250 gpay",
-  "Tea snacks 40 cash",
-  "பெட்ரோல் 500 ஜிபே",
-  "Mobile recharge 299 UPI"
+  "Tea 40 cash",
+  "பெட்ரோல் 500 ஜிபே"
 ]
 
 function parseNaturalExpense(input: string, userCategories: string[] = []) {
@@ -70,7 +71,7 @@ function parseNaturalExpense(input: string, userCategories: string[] = []) {
     }
   }
 
-  // Word-based number recognition for common Tanglish / Tamil amounts
+  // Word-based numbers in Tanglish / Tamil
   const lower = text.toLowerCase()
   if (!detectedAmount) {
     if (/\b(aayiram|ஆயிரம்)\b/i.test(lower)) detectedAmount = "1000"
@@ -91,7 +92,7 @@ function parseNaturalExpense(input: string, userCategories: string[] = []) {
     detectedPaymentMethod = "Net Banking"
   }
 
-  // 3. User usage adaptive category matching: check user's saved/frequent categories first
+  // 3. Category matching (User custom > Built-in > Tanglish/Tamil)
   if (userCategories && userCategories.length > 0) {
     for (const customCat of userCategories) {
       if (customCat && new RegExp(`\\b${customCat.toLowerCase()}\\b`, "i").test(lower)) {
@@ -101,7 +102,6 @@ function parseNaturalExpense(input: string, userCategories: string[] = []) {
     }
   }
 
-  // Fallback to built-in category keywords (English, Tanglish & Tamil)
   if (!detectedCategory) {
     if (/(petrol|fuel|diesel|gasoline|cng|vandi\s*petrol|bike\s*petrol|car\s*petrol|பெட்ரோல்|டீசல்|எரிபொருள்|வண்டி)/i.test(lower)) {
       detectedCategory = "Petrol"
@@ -132,7 +132,7 @@ function parseNaturalExpense(input: string, userCategories: string[] = []) {
     }
   }
 
-  // 4. Date detection: "yesterday", "today", "innaiku", "nethu", "இன்று", "நேற்று"
+  // 4. Date detection
   if (/(yesterday|nethu|naethu|நேற்று|நேத்து)/i.test(lower)) {
     const y = new Date()
     y.setDate(y.getDate() - 1)
@@ -141,7 +141,7 @@ function parseNaturalExpense(input: string, userCategories: string[] = []) {
     detectedDate = new Date().toISOString().split("T")[0]
   }
 
-  // 5. Clean Description: remove numbers, payment words, connectors
+  // 5. Clean Description
   let cleanDesc = text
     .replace(/(?:₹|rs\.?|inr|rupees?|rooba|roova|kaasu|panam|ரூபாய்|ரூ\.?)?\s*\d+(?:,\d+)*(?:\.\d+)?(?:\s*(?:rs|inr|rupees?|rooba|roova|kaasu|panam|ரூபாய்|ரூ|\/-))?/gi, "")
     .replace(/\b(upi|gpay|google\s*pay|phonepe|paytm|bhim|cash|card|credit\s*card|debit\s*card|net\s*banking|netbanking|ஜிபே|கூகுள்\s*பே|யுபிஐ|ரொக்கம்|பணம்)\b/gi, "")
@@ -177,9 +177,9 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
   const [isListening, setIsListening] = useState(false)
   const [voiceLang, setVoiceLang] = useState<"en-IN" | "ta-IN">("en-IN")
   const [voiceTranscript, setVoiceTranscript] = useState("")
-  const [voiceAnalyzed, setVoiceAnalyzed] = useState<any>(null)
   const recognitionRef = useRef<any>(null)
 
+  const [showExtras, setShowExtras] = useState(false)
   const [userCategories, setUserCategories] = useState<string[]>([])
 
   const [formData, setFormData] = useState({
@@ -204,12 +204,11 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
     } catch {}
   }, [])
 
-  // Auto-set voice language if app language is Tamil
   useEffect(() => {
     if (language === "ta") {
       setVoiceLang("ta-IN")
     } else {
-      setVoiceLang("en-IN") // en-IN handles Tanglish & Indian English
+      setVoiceLang("en-IN")
     }
   }, [language])
 
@@ -232,7 +231,6 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
     }
   }, [userCategories])
 
-  // Stop Speech Recognition safely
   const stopVoiceAssistant = useCallback(() => {
     if (recognitionRef.current) {
       try {
@@ -243,12 +241,11 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
     setIsListening(false)
   }, [])
 
-  // Start Speech Recognition
   const startVoiceAssistant = useCallback(() => {
     const SpeechRecognition = typeof window !== "undefined" && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
 
     if (!SpeechRecognition) {
-      notify.info("Voice Not Supported", "Your browser does not support voice speech. You can type in Tanglish/Tamil in the box instead.")
+      notify.info("Voice Input", "Speech recognition not supported in this browser. Please type in the box.")
       return
     }
 
@@ -263,7 +260,6 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
       recognition.onstart = () => {
         setIsListening(true)
         setVoiceTranscript("")
-        setVoiceAnalyzed(null)
       }
 
       recognition.onresult = (event: any) => {
@@ -282,7 +278,6 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
           setMagicInput(text)
           const parsed = parseNaturalExpense(text, userCategories)
           if (parsed) {
-            setVoiceAnalyzed(parsed)
             setFormData(prev => ({
               ...prev,
               amount: parsed.amount || prev.amount,
@@ -312,18 +307,17 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
       recognition.start()
     } catch (e: any) {
       setIsListening(false)
-      notify.error("Microphone Access", e.message || "Failed to start microphone.")
+      notify.error("Microphone", e.message || "Failed to start microphone.")
     }
   }, [stopVoiceAssistant, userCategories, voiceLang])
 
-  // Reset modal state on open
   useEffect(() => {
     if (open) {
       setMagicInput("")
       setMagicParsed(false)
       setVoiceTranscript("")
-      setVoiceAnalyzed(null)
       setIsListening(false)
+      setShowExtras(false)
       setFormData({
         amount: "",
         category: "",
@@ -339,7 +333,7 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
       if (autoStartVoice) {
         setTimeout(() => {
           startVoiceAssistant()
-        }, 300)
+        }, 250)
       }
     } else {
       stopVoiceAssistant()
@@ -366,7 +360,6 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
 
   const handleRemoveReceipt = () => {
     setFormData(prev => ({ ...prev, receiptUrl: "" }))
-    notify.info("Receipt Removed", "The attached photo was removed.")
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -376,7 +369,7 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
       return
     }
     if (!formData.category.trim()) {
-      notify.error("Category Required", "Please select or enter a category.")
+      notify.error("Category Required", "Please enter or select a category.")
       return
     }
     setLoading(true)
@@ -389,7 +382,6 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
       })
 
       if (res.ok) {
-        // Learn user habit: remember frequently used category
         try {
           const current = JSON.parse(localStorage.getItem("billbrain_frequent_categories") || "[]")
           if (!current.includes(formData.category)) {
@@ -419,265 +411,129 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[92vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between pr-6">
-            <DialogTitle className="text-xl font-bold">
-              <span>Add Expense</span>
+      <DialogContent className="sm:max-w-[430px] p-4 sm:p-5 max-h-[90vh] overflow-y-auto rounded-2xl">
+        {/* Compact Header */}
+        <DialogHeader className="pb-2 border-b border-border/50">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-base sm:text-lg font-bold text-foreground">
+              Add Expense
             </DialogTitle>
-
-            <div className="flex items-center gap-1.5">
-              {/* Voice Language Selector */}
-              <div className="flex items-center bg-muted/60 p-0.5 rounded-lg border border-border/50 text-[11px]">
-                <button
-                  type="button"
-                  onClick={() => setVoiceLang("en-IN")}
-                  className={`px-2 py-0.5 rounded-md font-medium transition-all ${
-                    voiceLang === "en-IN"
-                      ? "bg-background text-primary font-bold shadow-2xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                  title="Recognize Tanglish & English"
-                >
-                  Tanglish
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setVoiceLang("ta-IN")}
-                  className={`px-2 py-0.5 rounded-md font-medium transition-all ${
-                    voiceLang === "ta-IN"
-                      ? "bg-background text-primary font-bold shadow-2xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                  title="Recognize தமிழ் (Tamil)"
-                >
-                  தமிழ்
-                </button>
-              </div>
-
-              {/* Voice Note Button */}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={isListening ? stopVoiceAssistant : startVoiceAssistant}
-                className={`h-7 px-2.5 rounded-lg text-xs font-semibold transition-all ${
-                  isListening 
-                    ? "bg-rose-500 text-white border-rose-600 animate-pulse hover:bg-rose-600" 
-                    : "border-primary/30 text-primary hover:bg-primary/10"
-                }`}
-              >
-                {isListening ? (
-                  <>
-                    <MicOff className="w-3.5 h-3.5 mr-1" />
-                    <span>Listening...</span>
-                  </>
-                ) : (
-                  <>
-                    <Mic className="w-3.5 h-3.5 mr-1 text-primary" />
-                    <span>Voice</span>
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-
-          <DialogDescription className="text-xs sm:text-sm">
-            Speak or type in English, Tanglish, or தமிழ் — auto-analyzed instantly.
-          </DialogDescription>
-        </DialogHeader>
-
-        {/* Live Voice Listening Indicator */}
-        {isListening && (
-          <div className="bg-rose-500/10 border-2 border-rose-500/30 rounded-2xl p-3.5 flex flex-col items-center justify-center text-center space-y-2 animate-in fade-in-50 duration-200">
-            <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-xs">
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
-              </span>
-              <span>Listening ({voiceLang === 'ta-IN' ? 'தமிழ்' : 'Tanglish / English'})... Speak now</span>
-            </div>
-
-            <p className="text-xs text-muted-foreground italic max-w-sm">
-              "{voiceTranscript || (voiceLang === 'ta-IN' ? 'எ.கா. பெட்ரோல் 500 ரூபாய் ஜிபே...' : 'e.g. Petrol ku 500 cash, or biryani 350 gpay...')}"
-            </p>
-
-            <Button
-              type="button"
-              size="sm"
-              onClick={stopVoiceAssistant}
-              className="bg-rose-600 hover:bg-rose-700 text-white text-xs h-7 px-3 rounded-lg"
-            >
-              Done Speaking
-            </Button>
-          </div>
-        )}
-
-        {/* Voice Auto-Analyzed Preview Card — User Decides! */}
-        {voiceAnalyzed && !isListening && (
-          <div className="bg-gradient-to-br from-emerald-500/10 via-primary/5 to-background border-2 border-emerald-500/30 rounded-2xl p-3.5 space-y-2.5 animate-in fade-in-50">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>Analyzed from {voiceLang === 'ta-IN' ? 'தமிழ்' : 'Tanglish / English'}</span>
-              </div>
+            <div className="flex items-center gap-1 bg-muted/60 p-0.5 rounded-lg border border-border/50 text-[10px]">
               <button
                 type="button"
-                onClick={startVoiceAssistant}
-                className="text-[11px] text-muted-foreground hover:text-foreground font-medium flex items-center gap-1"
-                title="Speak again"
+                onClick={() => setVoiceLang("en-IN")}
+                className={`px-1.5 py-0.5 rounded transition-all ${
+                  voiceLang === "en-IN"
+                    ? "bg-background text-primary font-bold shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
-                <RotateCcw className="w-3 h-3" /> Re-speak
+                Tanglish
+              </button>
+              <button
+                type="button"
+                onClick={() => setVoiceLang("ta-IN")}
+                className={`px-1.5 py-0.5 rounded transition-all ${
+                  voiceLang === "ta-IN"
+                    ? "bg-background text-primary font-bold shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                தமிழ்
               </button>
             </div>
-
-            {/* Analyzed Pills Grid */}
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-background/80 p-2 rounded-xl border border-border/60">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Amount</span>
-                <span className="text-sm font-extrabold text-foreground">
-                  ₹{formData.amount || "0.00"}
-                </span>
-              </div>
-
-              <div className="bg-background/80 p-2 rounded-xl border border-border/60">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Category</span>
-                <span className="text-xs font-bold text-primary truncate block">
-                  {formData.category || "Unassigned"}
-                </span>
-              </div>
-
-              <div className="bg-background/80 p-2 rounded-xl border border-border/60">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Method</span>
-                <span className="text-xs font-semibold text-foreground truncate block">
-                  {formData.paymentMethod || "UPI"}
-                </span>
-              </div>
-
-              <div className="bg-background/80 p-2 rounded-xl border border-border/60">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Description</span>
-                <span className="text-xs font-medium text-foreground truncate block">
-                  {formData.description || "Manual Entry"}
-                </span>
-              </div>
-            </div>
-
-            {/* User Decision Action: 1-click confirm or edit below */}
-            <div className="pt-1 flex items-center justify-between gap-2">
-              <p className="text-[11px] text-muted-foreground">
-                Review/edit fields below, or save now:
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleSubmit}
-                disabled={loading}
-                className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shrink-0"
-              >
-                {loading ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Check className="w-3.5 h-3.5 mr-1 stroke-[3]" />}
-                Save Now
-              </Button>
-            </div>
           </div>
-        )}
+        </DialogHeader>
 
-        {/* Magic "In Your Own Words" One-Liner Box */}
-        <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-purple-500/10 p-3 sm:p-3.5 rounded-2xl border border-primary/20 space-y-2 mt-1">
-          <div className="flex items-center justify-between">
-            <label htmlFor="magicInput" className="text-xs font-bold text-primary flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
-              <span>English / Tanglish / தமிழ் Quick Note</span>
-            </label>
-            {magicInput && (
-              <button 
-                type="button" 
+        {/* Sleek Smart Input Bar (Voice + Magic in one neat line) */}
+        <div className="pt-1 space-y-1.5">
+          <div className={`relative flex items-center rounded-xl border transition-all ${
+            isListening 
+              ? "border-rose-500 bg-rose-500/10 ring-2 ring-rose-500/20" 
+              : "border-primary/30 bg-primary/5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary focus-within:bg-background"
+          }`}>
+            <button
+              type="button"
+              onClick={isListening ? stopVoiceAssistant : startVoiceAssistant}
+              className={`p-2 transition-transform active:scale-90 ${
+                isListening ? "text-rose-600 animate-pulse" : "text-primary hover:text-primary/80"
+              }`}
+              title={isListening ? "Stop listening" : "Tap to speak your expense"}
+            >
+              {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            </button>
+
+            <input
+              type="text"
+              value={isListening ? voiceTranscript || "Listening... speak now" : magicInput}
+              onChange={(e) => handleMagicInputChange(e.target.value)}
+              placeholder="e.g. 350 biryani UPI, or Petrol ku 500 cash..."
+              className="w-full bg-transparent text-xs sm:text-sm py-2 pr-7 focus:outline-none placeholder:text-muted-foreground"
+              autoFocus={!autoStartVoice}
+            />
+
+            {(magicInput || magicParsed) && !isListening && (
+              <button
+                type="button"
                 onClick={() => {
                   setMagicInput("")
                   setMagicParsed(false)
-                  setVoiceAnalyzed(null)
-                }} 
-                className="text-[11px] text-muted-foreground hover:text-foreground font-medium"
+                }}
+                className="absolute right-2 text-muted-foreground hover:text-foreground p-0.5"
+                title="Clear"
               >
-                Clear
+                <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
-          <div className="relative flex items-center">
-            <Input
-              id="magicInput"
-              value={magicInput}
-              onChange={(e) => handleMagicInputChange(e.target.value)}
-              placeholder="e.g. Petrol ku 500 cash, or 350 biryani UPI, or காய்கறி 200..."
-              className="bg-background text-sm pr-16 border-primary/30 focus-visible:ring-primary shadow-xs rounded-xl"
-              autoFocus={!autoStartVoice}
-            />
-
-            <div className="absolute right-1.5 flex items-center gap-1">
-              {/* Mic Trigger inside input */}
-              <button
-                type="button"
-                onClick={isListening ? stopVoiceAssistant : startVoiceAssistant}
-                className={`p-1.5 rounded-lg transition-colors ${
-                  isListening
-                    ? "text-rose-600 bg-rose-500/20 animate-pulse"
-                    : "text-muted-foreground hover:text-primary hover:bg-muted"
-                }`}
-                title="Tap to speak in English, Tanglish, or தமிழ்"
-              >
-                <Mic className="w-4 h-4" />
-              </button>
-
-              {magicParsed && (
-                <span className="text-emerald-600 dark:text-emerald-400 text-xs font-bold mr-1" title="Fields auto-filled">
-                  <Check className="w-4 h-4 stroke-[3]" />
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Quick Tanglish & Tamil Examples */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide text-[11px]">
+          {/* Clean Quick Chips */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-hide text-[10px]">
             <span className="text-muted-foreground shrink-0 font-medium">Try:</span>
-            {QUICK_EXAMPLES.map((example) => (
+            {QUICK_EXAMPLES.map((ex) => (
               <button
-                key={example}
+                key={ex}
                 type="button"
-                onClick={() => handleMagicInputChange(example)}
-                className="shrink-0 px-2 py-0.5 rounded-lg bg-background/80 hover:bg-background border border-primary/20 hover:border-primary/40 text-muted-foreground hover:text-foreground transition-all text-[11px]"
+                onClick={() => handleMagicInputChange(ex)}
+                className="shrink-0 px-2 py-0.5 rounded-md bg-muted/40 hover:bg-muted border border-border/60 text-muted-foreground hover:text-foreground transition-all"
               >
-                {example}
+                {ex}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Existing Full Form Fields (User has full edit & decision control) */}
-        <form onSubmit={handleSubmit} className="space-y-4 pt-1">
-          <div className="space-y-1.5">
-            <Label htmlFor="amount" className="text-xs font-semibold">Amount (INR)</Label>
-            <Input 
-              id="amount" 
-              type="number" 
-              step="0.01" 
-              required 
-              placeholder="0.00"
-              value={formData.amount}
-              onChange={(e) => setFormData({...formData, amount: e.target.value})}
-              className="text-base sm:text-lg font-bold"
-            />
-          </div>
+        {/* Clean, Comfortable Form Grid */}
+        <form onSubmit={handleSubmit} className="space-y-3 pt-1">
+          {/* Row 1: Amount & Category */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="space-y-1">
+              <Label htmlFor="amount" className="text-[11px] font-semibold text-muted-foreground">Amount (₹)</Label>
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">₹</span>
+                <Input 
+                  id="amount" 
+                  type="number" 
+                  step="0.01" 
+                  required 
+                  placeholder="0.00"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                  className="pl-6 h-9 text-sm font-bold"
+                />
+              </div>
+            </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="category" className="text-xs font-semibold">Category</Label>
+            <div className="space-y-1">
+              <Label htmlFor="category" className="text-[11px] font-semibold text-muted-foreground">Category</Label>
               <Input 
                 id="category" 
                 list="category-suggestions"
                 required 
-                placeholder="e.g. Food, Petrol, Rent..."
+                placeholder="e.g. Food, Petrol..."
                 value={formData.category}
                 onChange={(e) => setFormData({...formData, category: e.target.value})}
+                className="h-9 text-xs sm:text-sm"
               />
               <datalist id="category-suggestions">
                 {Array.from(new Set([...userCategories, ...CATEGORIES])).map(c => (
@@ -685,12 +541,15 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
                 ))}
               </datalist>
             </div>
-            
-            <div className="space-y-1.5">
-              <Label htmlFor="paymentMethod" className="text-xs font-semibold">Payment Method</Label>
+          </div>
+
+          {/* Row 2: Payment Method & Date */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="space-y-1">
+              <Label htmlFor="paymentMethod" className="text-[11px] font-semibold text-muted-foreground">Payment Method</Label>
               <select 
                 id="paymentMethod"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-9 w-full rounded-md border border-input bg-background px-2.5 py-1 text-xs shadow-2xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 value={formData.paymentMethod} 
                 onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}
               >
@@ -699,151 +558,145 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess, autoStartVoice 
                 ))}
               </select>
             </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="date" className="text-[11px] font-semibold text-muted-foreground">Date</Label>
+              <Input 
+                id="date" 
+                type="date" 
+                required
+                suppressHydrationWarning
+                value={formData.date}
+                onChange={(e) => setFormData({...formData, date: e.target.value})}
+                className="h-9 text-xs"
+              />
+            </div>
           </div>
           
-          <div className="space-y-1.5">
-            <Label htmlFor="description" className="text-xs font-semibold">Description</Label>
+          {/* Row 3: Description */}
+          <div className="space-y-1">
+            <Label htmlFor="description" className="text-[11px] font-semibold text-muted-foreground">Description</Label>
             <Input 
               id="description" 
-              placeholder="e.g. Grocery run, Dinner with family"
+              placeholder="e.g. Grocery run or Lunch with friends"
               value={formData.description}
               onChange={(e) => setFormData({...formData, description: e.target.value})}
+              className="h-9 text-xs"
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="date" className="text-xs font-semibold">Date</Label>
-            <Input 
-              id="date" 
-              type="date" 
-              required
-              suppressHydrationWarning
-              value={formData.date}
-              onChange={(e) => setFormData({...formData, date: e.target.value})}
-            />
-          </div>
+          {/* Optional Extras (Receipt & Recurring) - Neat compact collapsible */}
+          <div className="pt-1 border-t border-border/40">
+            <div className="flex items-center justify-between text-xs">
+              <button
+                type="button"
+                onClick={() => setShowExtras(!showExtras)}
+                className="text-[11px] font-medium text-primary hover:underline flex items-center gap-1"
+              >
+                <span>{showExtras ? "Hide Extra Details" : "+ Attach Receipt / Recurring"}</span>
+              </button>
 
-          {/* Notes / Spoken sentence */}
-          <div className="space-y-1.5">
-            <Label htmlFor="notes" className="text-xs font-semibold text-muted-foreground">Notes / Spoken Words</Label>
-            <Input 
-              id="notes" 
-              placeholder="e.g. Full speech transcript or personal notes..."
-              value={formData.notes}
-              onChange={(e) => setFormData({...formData, notes: e.target.value})}
-              className="text-xs"
-            />
-          </div>
-
-          {/* Receipt Attachment Section */}
-          <div className="space-y-2 pt-1 border-t border-border/50">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <Paperclip className="w-3.5 h-3.5" /> Receipt Photo
-              </Label>
               {formData.receiptUrl && (
-                <button
-                  type="button"
-                  onClick={handleRemoveReceipt}
-                  className="text-xs text-destructive hover:underline flex items-center gap-1"
-                >
-                  <X className="w-3 h-3" /> Remove
-                </button>
+                <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                  <Check className="w-3 h-3 stroke-[3]" /> Receipt Attached
+                </span>
               )}
             </div>
 
-            <input 
-              ref={fileInputRef}
-              type="file" 
-              accept="image/*" 
-              className="hidden" 
-              onChange={handleFileChange}
-            />
-
-            {formData.receiptUrl ? (
-              <div className="relative border border-border/60 rounded-xl p-2 bg-muted/20 flex items-center gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img 
-                  src={formData.receiptUrl} 
-                  alt="Receipt Preview" 
-                  className="w-14 h-14 object-cover rounded-lg border border-border/50 shrink-0"
-                />
-                <div className="text-xs text-muted-foreground truncate flex-1">
-                  <p className="font-medium text-foreground truncate">Receipt Attached</p>
-                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400">Ready to save</p>
+            {showExtras && (
+              <div className="mt-2.5 space-y-2.5 p-2.5 rounded-xl bg-muted/20 border border-border/50 animate-in fade-in-50 text-xs">
+                {/* Notes */}
+                <div className="space-y-1">
+                  <Label htmlFor="notes" className="text-[10px] font-semibold text-muted-foreground">Notes / Spoken Memo</Label>
+                  <Input 
+                    id="notes" 
+                    placeholder="e.g. Memo details or speech transcript..."
+                    value={formData.notes}
+                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                    className="h-8 text-xs"
+                  />
                 </div>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
-                  className="h-8 text-xs shrink-0"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  Change
-                </Button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                disabled={compressing}
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full border border-dashed border-border/70 hover:border-primary/50 hover:bg-primary/5 rounded-xl p-3 text-center transition-colors flex items-center justify-center gap-2 text-xs text-muted-foreground"
-              >
-                {compressing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                    <span>Compressing image...</span>
-                  </>
-                ) : (
-                  <>
-                    <UploadCloud className="w-4 h-4 text-muted-foreground" />
-                    <span>Upload or take a photo of receipt (optional)</span>
-                  </>
+
+                {/* Receipt Upload */}
+                <div className="flex items-center justify-between pt-1">
+                  <div className="flex items-center gap-2">
+                    <input 
+                      ref={fileInputRef}
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={handleFileChange}
+                    />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-7 text-xs"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={compressing}
+                    >
+                      <Paperclip className="w-3 h-3 mr-1" />
+                      {formData.receiptUrl ? "Change Receipt" : "Attach Photo"}
+                    </Button>
+                    {formData.receiptUrl && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveReceipt}
+                        className="text-[10px] text-rose-500 hover:underline"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Recurring Check */}
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                    <input 
+                      type="checkbox"
+                      checked={formData.isRecurring}
+                      onChange={(e) => setFormData({ ...formData, isRecurring: e.target.checked })}
+                      className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary"
+                    />
+                    <span className="text-[11px] font-medium text-muted-foreground">Recurring</span>
+                  </label>
+                </div>
+
+                {formData.isRecurring && (
+                  <div className="pt-1">
+                    <select
+                      value={formData.recurrenceRule}
+                      onChange={(e) => setFormData({ ...formData, recurrenceRule: e.target.value })}
+                      className="h-7 w-full rounded border border-input bg-background px-2 text-[11px]"
+                    >
+                      <option value="MONTHLY">Monthly</option>
+                      <option value="WEEKLY">Weekly</option>
+                      <option value="YEARLY">Yearly</option>
+                      <option value="DAILY">Daily</option>
+                    </select>
+                  </div>
                 )}
-              </button>
-            )}
-          </div>
-
-          {/* Recurring Schedule Section */}
-          <div className="space-y-2 pt-2 border-t border-border/50">
-            <div className="flex items-center justify-between">
-              <label htmlFor="isRecurring" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 cursor-pointer">
-                <RefreshCw className="w-3.5 h-3.5" /> Recurring Transaction
-              </label>
-              <input 
-                id="isRecurring"
-                type="checkbox"
-                checked={formData.isRecurring}
-                onChange={(e) => setFormData({ ...formData, isRecurring: e.target.checked })}
-                className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
-              />
-            </div>
-
-            {formData.isRecurring && (
-              <div className="bg-muted/20 p-3 rounded-xl border border-border/50 space-y-2 animate-in fade-in-50 duration-200">
-                <Label htmlFor="recurrenceRule" className="text-xs text-muted-foreground">Repeat Frequency</Label>
-                <select
-                  id="recurrenceRule"
-                  value={formData.recurrenceRule}
-                  onChange={(e) => setFormData({ ...formData, recurrenceRule: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  <option value="MONTHLY">Monthly (e.g. Rent, Wi-Fi, Subscriptions)</option>
-                  <option value="WEEKLY">Weekly (e.g. Groceries, Allowance)</option>
-                  <option value="YEARLY">Yearly (e.g. Annual Insurance, Taxes)</option>
-                  <option value="DAILY">Daily (e.g. Daily Transport)</option>
-                </select>
-                <p className="text-[11px] text-muted-foreground">
-                  BillBrain will remind you and automatically log this transaction each billing cycle.
-                </p>
               </div>
             )}
           </div>
 
-          <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={loading || compressing} className="w-full sm:w-auto font-semibold">
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          {/* Action Buttons */}
+          <DialogFooter className="pt-2 flex flex-row items-center justify-end gap-2 border-t border-border/40">
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => onOpenChange(false)}
+              className="h-9 text-xs"
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              size="sm"
+              disabled={loading || compressing} 
+              className="h-9 px-4 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              {loading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
               Save Expense
             </Button>
           </DialogFooter>
