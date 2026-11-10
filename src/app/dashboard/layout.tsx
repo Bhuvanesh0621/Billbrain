@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/layout/Sidebar"
 import { TopNav } from "@/components/layout/TopNav"
 import { BottomNav } from "@/components/layout/BottomNav"
+import { FloatingCalculator } from "@/components/calculator/FloatingCalculator"
 
 export default function DashboardLayout({
   children,
@@ -18,6 +19,7 @@ export default function DashboardLayout({
           </div>
         </main>
       </div>
+      <FloatingCalculator />
       <BottomNav />
     </div>
   )
